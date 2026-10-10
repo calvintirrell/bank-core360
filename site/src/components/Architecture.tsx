@@ -13,7 +13,7 @@ const STEPS: Array<{ title: string; detail: string; tone: string }> = [
 
 export function Architecture() {
   return (
-    <Section id="architecture" title="Architecture" subtitle="A medallion lakehouse built in Python on every push by GitHub Actions. The outputs, including the Delta transaction logs, are committed so anyone can open them.">
+    <Section id="architecture" title="Architecture" subtitle="For the engineers: a medallion lakehouse built in Python on every push by GitHub Actions. The outputs, including the Delta transaction logs, are committed so anyone can open them.">
       <ol className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
         {STEPS.map((s, i) => (
           <li key={s.title} className={`relative rounded-xl border p-3 ${s.tone}`}>

@@ -26,11 +26,11 @@ This demo is the first release I would ship for them, built end to end so the tr
 
 ## What you can do on the page
 
-- Browse the two raw feeds side by side, exactly as landed.
-- Page and filter the customer-360 table. Click a customer to see their accounts across both cores.
+- Ask a question, first thing on the page. Six are cached and always work. Live questions run through a small shared proxy with a daily cap, or through your own Anthropic key by adding `?byok` to the URL.
+- Page and filter the customer-360 table the answers come from. Click a customer to see their accounts across both cores.
 - Read the entity-resolution scorecard: tiers, precision and recall, and the outcome for each designed difficulty.
 - Run your own SQL in the console. DuckDB-WASM executes it in your browser against the gold Parquet. Nothing leaves the page.
-- Ask a question. Six are cached and always work. Live questions run through a small shared proxy with a daily cap, or through your own Anthropic key by adding `?byok` to the URL.
+- Browse the two raw feeds side by side, exactly as landed, and the architecture that turns them into one table.
 
 ## How it works
 

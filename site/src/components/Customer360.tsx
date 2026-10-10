@@ -75,7 +75,7 @@ export function Customer360({ lineage }: { lineage: Lineage | null }) {
   const pages = total === null ? 0 : Math.ceil(total / PAGE)
 
   return (
-    <Section id="customer360" title="Customer 360" subtitle="One row per real person, assembled from both cores. Click a row to see that customer's accounts across systems.">
+    <Section id="customer360" title="Customer 360" subtitle="The table the answers come from: one row per real person, assembled from both cores. Click a row to see that customer's accounts across systems.">
       <div className="mb-3 flex flex-wrap items-center gap-2">
         {FILTERS.map((f, i) => (
           <button

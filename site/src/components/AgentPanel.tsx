@@ -75,7 +75,7 @@ export function AgentPanel({ lineage }: { lineage: Lineage | null }) {
   }
 
   return (
-    <Section id="ask" title="Ask in plain English" subtitle="Claude writes the SQL, runs it right here in DuckDB-WASM, and explains the answer. Every column in the result keeps its lineage badge.">
+    <Section id="ask" title="Ask in plain English" subtitle="Pick a question or type your own. Claude writes the SQL, runs it right here in your browser, and explains the answer. Every column in the result keeps a badge saying which core it came from.">
       <Card>
         <div className="mb-2 flex flex-wrap gap-1.5">
           {replay?.questions.map((q) => (

@@ -11,12 +11,12 @@ import { loadLakehouse, type Lakehouse } from './lib/lakehouse'
 
 const NAV = [
   ['#overview', 'Overview'],
-  ['#architecture', 'Architecture'],
-  ['#cores', 'The two cores'],
+  ['#ask', 'Ask'],
   ['#customer360', 'Customer 360'],
   ['#matching', 'Matching'],
   ['#sql', 'SQL'],
-  ['#ask', 'Ask'],
+  ['#cores', 'The two cores'],
+  ['#architecture', 'Architecture'],
 ] as const
 
 export default function App() {
@@ -39,12 +39,12 @@ export default function App() {
       <main className="mx-auto max-w-6xl space-y-12 px-4 py-8">
         {error && <pre className="rounded-md bg-red-50 p-3 text-xs text-red-700">Could not load the lakehouse exports: {error}</pre>}
         <Hero manifest={lh?.manifest ?? null} report={lh?.matchReport ?? null} />
-        <Architecture />
-        <Cores samples={lh?.rawSamples ?? null} lineage={lh?.lineage ?? null} />
+        <AgentPanel lineage={lh?.lineage ?? null} />
         <Customer360 lineage={lh?.lineage ?? null} />
         <MatchReport report={lh?.matchReport ?? null} />
         <SqlConsole lineage={lh?.lineage ?? null} />
-        <AgentPanel lineage={lh?.lineage ?? null} />
+        <Cores samples={lh?.rawSamples ?? null} lineage={lh?.lineage ?? null} />
+        <Architecture />
         <Footer />
       </main>
     </div>

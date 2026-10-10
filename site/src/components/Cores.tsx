@@ -33,7 +33,7 @@ export function Cores({ samples, lineage }: { samples: RawSamples | null; lineag
     { id: 'core_b', badge: 'B', color: 'border-sky-300 bg-sky-50' },
   ]
   return (
-    <Section id="cores" title="Two cores that disagree" subtitle="The same bank after an acquisition: a legacy in-house core and the acquired bank's core, each with its own ids, formats and product codes. These are the feeds exactly as landed in bronze.">
+    <Section id="cores" title="Two cores that disagree" subtitle="Where it all started: the same bank after an acquisition, with a legacy in-house core and the acquired bank's core, each with its own ids, formats and product codes. These are the feeds exactly as landed in bronze.">
       <div className="grid gap-4 md:grid-cols-2">
         {systems.map((s) => (
           <Card key={s.id} className={s.color}>
