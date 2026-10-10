@@ -24,7 +24,7 @@ const MAX_BODY_BYTES = 100_000
 function corsHeaders(origin: string, req: Request): Headers {
   const h = new Headers()
   h.set('Access-Control-Allow-Origin', origin)
-  h.set('Access-Control-Allow-Methods', 'POST, OPTIONS')
+  h.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
   h.set('Access-Control-Allow-Headers', req.headers.get('Access-Control-Request-Headers') ?? 'content-type, anthropic-version, x-api-key, anthropic-dangerous-direct-browser-access')
   h.set('Access-Control-Expose-Headers', 'request-id, x-demo-remaining-today, x-demo-remaining-month')
   h.set('Access-Control-Max-Age', '86400')
@@ -53,6 +53,30 @@ export default {
 
     const url = new URL(req.url)
     if (url.pathname === '/health') return json(200, { ok: true }, cors)
+    if (url.pathname === '/quota' && req.method === 'GET') {
+      // Lets the page show "N of M demo queries left today" before anyone clicks.
+      const now = new Date().toISOString()
+      const [d, m, disabled] = await Promise.all([
+        env.USAGE.get(`count:${now.slice(0, 10)}`),
+        env.USAGE.get(`count:${now.slice(0, 7)}`),
+        env.USAGE.get('disabled'),
+      ])
+      const capDay = Number(env.DAILY_CAP)
+      const capMonth = Number(env.MONTHLY_CAP)
+      return json(
+        200,
+        {
+          cap_today: capDay,
+          used_today: Number(d ?? '0'),
+          remaining_today: Math.max(0, capDay - Number(d ?? '0')),
+          cap_month: capMonth,
+          remaining_month: Math.max(0, capMonth - Number(m ?? '0')),
+          disabled: disabled === '1',
+          resets_at_utc: `${now.slice(0, 10)}T23:59:59Z`,
+        },
+        cors,
+      )
+    }
     if (req.method !== 'POST' || url.pathname !== '/v1/messages') {
       return err(404, 'not_found_error', 'POST /v1/messages only', cors)
     }

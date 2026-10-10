@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { formatCell, registerParquet, runSql, type QueryResult } from './lib/duckdb'
-import { DEFAULT_MODEL, MODELS, PROXY_URL, ping, routeLabel, type ModelId } from './lib/anthropic'
+import { DEFAULT_MODEL, DemoCapError, MODELS, PROXY_URL, fetchQuota, ping, routeLabel, type ModelId, type Quota } from './lib/anthropic'
 
 type BuildInfo = { run_number: string; sha: string; built_at: string }
 
@@ -106,6 +106,15 @@ function AgentSpike() {
   const [busy, setBusy] = useState(false)
   const [reply, setReply] = useState('')
   const [error, setError] = useState('')
+  const [quota, setQuota] = useState<Quota | null>(null)
+  const [capHit, setCapHit] = useState(false)
+
+  useEffect(() => {
+    fetchQuota().then(setQuota)
+  }, [])
+
+  const usingProxy = !apiKey && !!PROXY_URL
+  const exhausted = usingProxy && (capHit || (quota !== null && quota.remaining_today <= 0))
 
   async function onPing() {
     setBusy(true)
@@ -115,9 +124,11 @@ function AgentSpike() {
       sessionStorage.setItem('bc360.apiKey', apiKey)
       setReply(await ping(apiKey, model))
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+      if (e instanceof DemoCapError) setCapHit(true)
+      else setError(e instanceof Error ? e.message : String(e))
     } finally {
       setBusy(false)
+      if (usingProxy) fetchQuota().then(setQuota)
     }
   }
 
@@ -151,12 +162,23 @@ function AgentSpike() {
         </select>
         <button
           onClick={onPing}
-          disabled={busy || (!apiKey && !PROXY_URL)}
+          disabled={busy || (!apiKey && !PROXY_URL) || exhausted}
           className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
         >
           {busy ? 'Calling…' : 'Ping'}
         </button>
       </div>
+      {usingProxy && quota && !exhausted && (
+        <p className="text-xs text-slate-500">
+          Shared demo: {quota.remaining_today} of {quota.cap_today} queries left today.
+        </p>
+      )}
+      {exhausted && (
+        <p role="alert" className="text-sm font-medium text-red-600">
+          Daily demo limit reached ({quota?.cap_today ?? 4} queries per day). Try again tomorrow after midnight UTC
+          {byokRequested() ? ', or enter your own key.' : '.'}
+        </p>
+      )}
       {reply && (
         <p className="text-sm">
           Model replied: <span className="font-mono">{reply}</span>{' '}

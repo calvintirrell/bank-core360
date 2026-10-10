@@ -28,6 +28,29 @@ export function makeClient(apiKey: string): Anthropic {
   return new Anthropic({ apiKey: 'proxy', baseURL: PROXY_URL, dangerouslyAllowBrowser: true })
 }
 
+/** Thrown when the shared proxy's daily demo cap has been reached. */
+export class DemoCapError extends Error {}
+
+export type Quota = {
+  cap_today: number
+  used_today: number
+  remaining_today: number
+  cap_month: number
+  remaining_month: number
+  disabled: boolean
+  resets_at_utc: string
+}
+
+export async function fetchQuota(): Promise<Quota | null> {
+  if (!PROXY_URL) return null
+  try {
+    const r = await fetch(`${PROXY_URL}/quota`)
+    return r.ok ? ((await r.json()) as Quota) : null
+  } catch {
+    return null
+  }
+}
+
 export function routeLabel(apiKey: string): string {
   return apiKey ? 'your key, direct to api.anthropic.com' : 'shared demo proxy (rate-limited, daily cap)'
 }
@@ -38,12 +61,20 @@ export async function ping(apiKey: string, model: ModelId = DEFAULT_MODEL): Prom
     throw new Error(`${model} is not available through the shared proxy; enter your own key to use it.`)
   }
   const client = makeClient(apiKey)
-  const res = await client.messages.create({
-    model,
-    max_tokens: 1024,
-    output_config: { effort: 'low' },
-    messages: [{ role: 'user', content: 'Reply with exactly one word: READY' }],
-  })
+  let res: Anthropic.Message
+  try {
+    res = await client.messages.create({
+      model,
+      max_tokens: 1024,
+      output_config: { effort: 'low' },
+      messages: [{ role: 'user', content: 'Reply with exactly one word: READY' }],
+    })
+  } catch (e) {
+    if (e instanceof Anthropic.RateLimitError && /daily demo cap/i.test(e.message)) {
+      throw new DemoCapError('Daily demo limit reached.')
+    }
+    throw e
+  }
   if (res.stop_reason === 'refusal') return `refused (${res.stop_details?.category ?? 'unknown'})`
   return res.content
     .filter((b) => b.type === 'text')

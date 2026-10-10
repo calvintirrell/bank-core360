@@ -7,7 +7,7 @@ workers_dev = true
 ALLOWED_ORIGINS = "https://calvintirrell.github.io,http://localhost:5173,http://localhost:4173"
 ALLOWED_MODELS = "claude-opus-5-5,claude-sonnet-5-5"
 MAX_TOKENS_CAP = "2048"
-DAILY_CAP = "60"
+DAILY_CAP = "4"
 MONTHLY_CAP = "300"
 
 # Per-IP rate limit: 5 requests per 60 s (free plan binding).
