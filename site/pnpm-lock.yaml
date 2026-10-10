@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@anthropic-ai/sdk':
-        specifier: 0.133.0
-        version: 0.133.0
+        specifier: 0.132.1
+        version: 0.132.1
       '@duckdb/duckdb-wasm':
         specifier: 1.32.0
         version: 1.32.0
@@ -51,8 +51,8 @@ importers:
 
 packages:
 
-  '@anthropic-ai/sdk@0.133.0':
-    resolution: {integrity: sha512-jlqUN8p8ESTJj+GJnA4KjzbEfF1waEoGzRT8jwytlYGFFgv+/DUQOxlYGvYw10UzhD1kwLqYzxvA3FrTB2YWuQ==}
+  '@anthropic-ai/sdk@0.132.1':
+    resolution: {integrity: sha512-Dg+Rd0effi+4FyNwgEx6JXl9COefsZ3C7BOPSKYIWboQOEIi9HXtu1WBdND0DIgMF7Qt1vuCSjsbs7sjUkzJuQ==}
     hasBin: true
     peerDependencies:
       zod: ^3.25.0 || ^4.0.0
@@ -806,7 +806,7 @@ packages:
 
 snapshots:
 
-  '@anthropic-ai/sdk@0.133.0':
+  '@anthropic-ai/sdk@0.132.1':
     dependencies:
       json-schema-to-ts: 3.1.1
       standardwebhooks: 1.1.1
