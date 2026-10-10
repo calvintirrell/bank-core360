@@ -53,10 +53,7 @@ flowchart TB
         direction LR
         PX["Shared proxy: Cloudflare Worker<br/>key, rate limit, daily cap"] --> CL["Claude API"]
     end
-    A --> BR
-    B --> BR
-    EX --> DB
-    AG --> PX
+    Sources --> Pipeline --> Browser --> AI
 ```
 
 The pipeline is deterministic for its seed, so CI commits new outputs only when the code changed them. The Delta transaction logs are committed too, so anyone can open `lakehouse/gold/customer_360/_delta_log` and see the table format is real.
