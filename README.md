@@ -4,7 +4,7 @@ Two mismatched banking cores, one governed customer-360 lakehouse, queryable in 
 
 **Live:** https://calvintirrell.github.io/bank-core360/
 
-Status: Phase 1 (data and pipeline) complete. The query UI, agent, product note and architecture diagram land in later phases.
+Status: Phase 2 (site and query layer) complete. The agent, product note and README diagram land in later phases.
 
 ## Layout
 
@@ -15,7 +15,8 @@ pipeline/          bronze -> silver -> match -> gold (Delta Lake) -> Parquet exp
 lakehouse/raw/     the two feeds exactly as a bank would hand them over
 lakehouse/bronze|silver|gold/   Delta tables (open the _delta_log folders)
 lakehouse/export/  gold Parquet + lineage.json + match_report.json + manifest.json
-site/              Vite + React + TypeScript; DuckDB-WASM query layer and the agent UI
+site/              Vite + React + TypeScript; DuckDB-WASM query layer, lineage badges, agent UI
+proxy/             Cloudflare Worker that holds the shared demo key (rate-limited, daily cap)
 tests/             pytest
 .github/workflows  pipeline -> commit outputs -> build site -> deploy Pages
 ```

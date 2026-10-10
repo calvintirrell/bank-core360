@@ -31,6 +31,26 @@ def export() -> dict[str, dict]:
     return out
 
 
+def raw_samples(n: int = 4) -> dict:
+    """First rows of every raw feed, exactly as received, so the UI can show the two cores side by side."""
+    from pipeline import RAW
+
+    out: dict = {}
+    for system in ("core_a", "core_b"):
+        out[system] = {}
+        for path in sorted((RAW / system).iterdir()):
+            lines = path.read_text().splitlines()
+            if path.suffix == ".psv":
+                cols = lines[0].split("|")
+                rows = [ln.split("|") for ln in lines[1 : 1 + n]]
+            else:
+                recs = [json.loads(ln) for ln in lines[:n]]
+                cols = list(recs[0].keys())
+                rows = [[v if isinstance(v, str) else json.dumps(v) for v in r.values()] for r in recs]
+            out[system][path.name] = {"columns": cols, "rows": rows, "total_rows": len(lines) - (1 if path.suffix == ".psv" else 0)}
+    return out
+
+
 def main() -> int:
     t0 = time.perf_counter()
     from data.generators.__main__ import main as generate
@@ -42,6 +62,7 @@ def main() -> int:
     g = gold.run()
     lineage.write()
     e = export()
+    (EXPORT / "raw_samples.json").write_text(json.dumps(raw_samples(), indent=1) + "\n")
     manifest = {
         "schema_version": 1,
         "seed": SEED,

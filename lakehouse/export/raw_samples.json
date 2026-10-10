@@ -1,0 +1,331 @@
+{
+ "core_a": {
+  "ACCTMAST.psv": {
+   "columns": [
+    "ACCT_NO",
+    "CIF_NO",
+    "PROD_CD",
+    "OPEN_DT",
+    "CUR_BAL_CENTS",
+    "ACCT_STAT"
+   ],
+   "rows": [
+    [
+     "2000000018",
+     "10000644",
+     "DDA",
+     "20260429",
+     "1514398",
+     "O"
+    ],
+    [
+     "2000000036",
+     "10003982",
+     "CDA",
+     "20221018",
+     "8146653",
+     "O"
+    ],
+    [
+     "2000000048",
+     "10003982",
+     "SAV",
+     "20230217",
+     "5151115",
+     "O"
+    ],
+    [
+     "2000000052",
+     "10003982",
+     "DDA",
+     "20231018",
+     "218797",
+     "O"
+    ]
+   ],
+   "total_rows": 2454
+  },
+  "CUSTMAST.psv": {
+   "columns": [
+    "CIF_NO",
+    "CUST_NAME",
+    "DOB",
+    "SSN_LAST4",
+    "ADDR_LINE1",
+    "CITY",
+    "ST",
+    "ZIP",
+    "PHONE",
+    "OPEN_DT",
+    "CUST_STAT"
+   ],
+   "rows": [
+    [
+     "10000002",
+     "YOUNG, RONALD C",
+     "19940615",
+     "8447",
+     "3484 YOUNG ROUTE",
+     "MORRISVIEW",
+     "KS",
+     "53166",
+     "9275830983",
+     "20060426",
+     "A"
+    ],
+    [
+     "10000010",
+     "REYES, ANDREW S",
+     "19650312",
+     "2042",
+     "72358 LAURA SQUARES",
+     "NORTH NICOLEBURGH",
+     "GA",
+     "96482",
+     "3362491917",
+     "20200730",
+     "A"
+    ],
+    [
+     "10000014",
+     "DOMINGUEZ, ZOE B",
+     "19550827",
+     "8756",
+     "95779 TROY FOREST",
+     "WEST DAVID",
+     "CA",
+     "62661",
+     "5879601282",
+     "20200907",
+     "A"
+    ],
+    [
+     "10000027",
+     "CAMACHO, DANIEL H",
+     "19750114",
+     "7078",
+     "5137 BRADLEY STREAM",
+     "ELIZABETHSHIRE",
+     "FM",
+     "19209",
+     "7207950802",
+     "20250219",
+     "A"
+    ]
+   ],
+   "total_rows": 1100
+  },
+  "TXNHIST.psv": {
+   "columns": [
+    "TXN_ID",
+    "ACCT_NO",
+    "TXN_DT",
+    "AMT",
+    "DR_CR",
+    "DESC"
+   ],
+   "rows": [
+    [
+     "A00000001",
+     "2000011687",
+     "02/04/2026",
+     "1755.22",
+     "D",
+     "MORTGAGE PAYMENT"
+    ],
+    [
+     "A00000002",
+     "2000026966",
+     "03/05/2026",
+     "3601.04",
+     "C",
+     "PAYROLL DEPOSIT"
+    ],
+    [
+     "A00000003",
+     "2000018941",
+     "11/22/2025",
+     "1751.28",
+     "D",
+     "MORTGAGE PAYMENT"
+    ],
+    [
+     "A00000004",
+     "2000010705",
+     "03/22/2026",
+     "441.37",
+     "D",
+     "RESTAURANT"
+    ]
+   ],
+   "total_rows": 24865
+  }
+ },
+ "core_b": {
+  "accounts.jsonl": {
+   "columns": [
+    "account_id",
+    "customer_id",
+    "product_type",
+    "opened_on",
+    "balance",
+    "currency",
+    "status"
+   ],
+   "rows": [
+    [
+     "0006575f-2e7a-49ec-952e-98f27549c590",
+     "acb11f7d-b2b9-44c2-972e-6abc264e412b",
+     "checking",
+     "2021-04-16",
+     "5143.61",
+     "USD",
+     "open"
+    ],
+    [
+     "00763849-1349-4ba9-bc23-61630a667b16",
+     "fc861a43-2b52-425c-95ba-c9a4c6a913a1",
+     "savings",
+     "2017-03-14",
+     "5894.04",
+     "USD",
+     "open"
+    ],
+    [
+     "00922f66-0876-4e83-9efb-b2296050828f",
+     "b95180c9-6d0e-4d07-b0c3-6e3d64dbc837",
+     "mortgage",
+     "2022-10-25",
+     "195213.39",
+     "USD",
+     "open"
+    ],
+    [
+     "00925bf5-49cc-4d52-9e98-e1c9a9107f0d",
+     "17094090-25cf-46f5-81cc-e6b1cc959bdc",
+     "checking",
+     "2014-04-21",
+     "12581.22",
+     "USD",
+     "open"
+    ]
+   ],
+   "total_rows": 2467
+  },
+  "customers.jsonl": {
+   "columns": [
+    "customer_id",
+    "first_name",
+    "middle_initial",
+    "last_name",
+    "date_of_birth",
+    "ssn_last_four",
+    "email",
+    "phone",
+    "address",
+    "created_at",
+    "is_active"
+   ],
+   "rows": [
+    [
+     "00276d7e-50d7-473c-8713-218f9e0a2e39",
+     "Jennifer",
+     "W",
+     "Ortiz",
+     "1942-01-15",
+     "4134",
+     "jennifer.sanchez90@example.com",
+     "(680) 248-8644",
+     "{\"street\": \"96030 Johnson Estate Suite 614\", \"city\": \"Taylorborough\", \"state\": \"LA\", \"postal_code\": \"12815\"}",
+     "2022-04-27T20:26:28Z",
+     "true"
+    ],
+    [
+     "00414e25-76b9-4858-844b-63a7e2342e8e",
+     "Robert",
+     "P",
+     "Matthews",
+     "1951-06-27",
+     "3292",
+     "robert.day54@example.com",
+     "(949) 460-4784",
+     "{\"street\": \"07057 David Light Suite 252\", \"city\": \"West Herbertchester\", \"state\": \"MP\", \"postal_code\": \"73624\"}",
+     "2025-05-22T16:19:56Z",
+     "true"
+    ],
+    [
+     "0041e714-4815-4611-8f4d-61882dce891e",
+     "Steven",
+     "C",
+     "Gonzalez",
+     "1975-08-21",
+     "9154",
+     "steven.gillespie19@example.com",
+     "(399) 630-7307",
+     "{\"street\": \"90785 Griffith Circles\", \"city\": \"Cartershire\", \"state\": \"UT\", \"postal_code\": \"82745\"}",
+     "2010-10-23T12:17:33Z",
+     "true"
+    ],
+    [
+     "00566a29-4267-4fb8-8c17-8440762f8003",
+     "Joshua",
+     "P",
+     "Logan",
+     "1958-04-21",
+     "7839",
+     "joshua.stein3@example.com",
+     "(400) 258-2288",
+     "{\"street\": \"12212 Nguyen Station\", \"city\": \"South Lori\", \"state\": \"CT\", \"postal_code\": \"53309\"}",
+     "2009-09-14T08:26:13Z",
+     "true"
+    ]
+   ],
+   "total_rows": 1200
+  },
+  "transactions.jsonl": {
+   "columns": [
+    "transaction_id",
+    "account_id",
+    "posted_at",
+    "amount",
+    "description",
+    "category"
+   ],
+   "rows": [
+    [
+     "00043e39-2f70-478e-b691-22fa312c6c8d",
+     "9d8b2b54-914c-4497-9f45-a52786272e83",
+     "2026-08-22T23:21:41Z",
+     "-123.37",
+     "Pharmacy",
+     "spend"
+    ],
+    [
+     "00055d2b-8133-4d25-9030-3e1f6c078795",
+     "b18059de-c3c8-4c1b-a9b1-391349efc387",
+     "2025-10-21T21:55:49Z",
+     "296.95",
+     "Interest Paid",
+     "income"
+    ],
+    [
+     "0005e4c4-8def-4d97-87aa-64465dce79a7",
+     "42bd917a-70fd-42fe-a218-33c78ee329b3",
+     "2026-07-13T05:53:35Z",
+     "1728.98",
+     "Payroll Deposit",
+     "income"
+    ],
+    [
+     "000d8701-7bcf-4273-9d80-b894fa5ace60",
+     "8781bd55-a37a-4835-9bb0-982f7352d075",
+     "2026-05-17T22:00:33Z",
+     "-942.59",
+     "Mortgage Payment",
+     "spend"
+    ]
+   ],
+   "total_rows": 25135
+  }
+ }
+}
