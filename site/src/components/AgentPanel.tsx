@@ -140,7 +140,7 @@ export function AgentPanel({ lineage }: { lineage: Lineage | null }) {
 
         {exhausted && (
           <p role="alert" className="mt-2 text-sm font-medium text-red-600">
-            Daily demo limit reached ({quota?.cap_today ?? 4} API calls per day). Cached answers for the listed questions still work. Live questions return after midnight UTC
+            Daily demo limit reached ({quota?.cap_today ?? 8} API calls per day). Cached answers for the listed questions still work. Live questions return after midnight UTC
             {byokRequested() ? ', or enter your own key.' : '.'}
           </p>
         )}
