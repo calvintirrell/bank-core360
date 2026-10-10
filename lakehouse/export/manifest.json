@@ -1,0 +1,9 @@
+{
+  "schema_version": 0,
+  "seed": 360,
+  "tables": {
+    "spike": {
+      "rows": 5
+    }
+  }
+}

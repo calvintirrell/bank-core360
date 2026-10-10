@@ -1,0 +1,27 @@
+# private materials: brief, game plan, research (never committed)
+_private/
+
+# project-scoped tooling and environments
+.tools/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# node
+node_modules/
+site/dist/
+site/.vite/
+
+# local secrets
+.env
+.env.*
+*.local
+
+# os
+.DS_Store
+
+# generated at build time from lakehouse/export
+site/public/data/
+*.tsbuildinfo
