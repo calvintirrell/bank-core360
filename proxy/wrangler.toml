@@ -6,17 +6,20 @@ workers_dev = true
 [vars]
 ALLOWED_ORIGINS = "https://calvintirrell.github.io,http://localhost:5173,http://localhost:4173"
 ALLOWED_MODELS = "claude-opus-5-5,claude-sonnet-5-5"
-MAX_TOKENS_CAP = "4096"
-DAILY_CAP = "300"
+MAX_TOKENS_CAP = "2048"
+DAILY_CAP = "60"
+MONTHLY_CAP = "300"
 
-# Per-IP rate limit: 10 requests per 60 s (free plan binding).
-[[unsafe.bindings]]
+# Per-IP rate limit: 5 requests per 60 s (free plan binding).
+[[ratelimits]]
 name = "RATE_LIMITER"
-type = "ratelimit"
 namespace_id = "1001"
-simple = { limit = 10, period = 60 }
+simple = { limit = 5, period = 60 }
 
-# Daily request counter (KV free tier). id is filled in by `wrangler kv namespace create USAGE`.
+# Usage counters + kill switch (KV free tier). Disable instantly with:
+#   pnpm exec wrangler kv key put --binding USAGE disabled 1 --remote
+# Re-enable with:
+#   pnpm exec wrangler kv key delete --binding USAGE disabled --remote id is filled in by `wrangler kv namespace create USAGE`.
 [[kv_namespaces]]
 binding = "USAGE"
 id = "bc2f476d010d4d7fa0ce6fa9e0ce167d"

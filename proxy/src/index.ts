@@ -1,8 +1,9 @@
 /**
  * bank-core360 proxy: holds the Anthropic API key so the GitHub Pages demo works with no key.
  *
- * Guards: origin allowlist, per-IP rate limit, daily request cap, model allowlist, max_tokens cap,
- * custom tools only, bounded body size. The browser never sees the key; it calls this Worker with
+ * Guards, in order: origin allowlist, per-IP rate limit, kill switch, body validation (model
+ * allowlist, max_tokens cap, custom tools only, bounded size), then daily + monthly caps. Counters
+ * only increment for requests that are actually forwarded upstream. The browser never sees the key; it calls this Worker with
  * the same request shape it would send to api.anthropic.com (the SDK just gets a different baseURL).
  */
 
@@ -12,19 +13,20 @@ export interface Env {
   ALLOWED_MODELS: string
   MAX_TOKENS_CAP: string
   DAILY_CAP: string
+  MONTHLY_CAP: string
   RATE_LIMITER: { limit(opts: { key: string }): Promise<{ success: boolean }> }
   USAGE: KVNamespace
 }
 
 const UPSTREAM = 'https://api.anthropic.com/v1/messages'
-const MAX_BODY_BYTES = 200_000
+const MAX_BODY_BYTES = 100_000
 
 function corsHeaders(origin: string, req: Request): Headers {
   const h = new Headers()
   h.set('Access-Control-Allow-Origin', origin)
   h.set('Access-Control-Allow-Methods', 'POST, OPTIONS')
   h.set('Access-Control-Allow-Headers', req.headers.get('Access-Control-Request-Headers') ?? 'content-type, anthropic-version, x-api-key, anthropic-dangerous-direct-browser-access')
-  h.set('Access-Control-Expose-Headers', 'request-id, x-ratelimit-remaining')
+  h.set('Access-Control-Expose-Headers', 'request-id, x-demo-remaining-today, x-demo-remaining-month')
   h.set('Access-Control-Max-Age', '86400')
   h.set('Vary', 'Origin')
   return h
@@ -56,20 +58,15 @@ export default {
     }
     if (!originOk) return err(403, 'permission_error', 'origin not allowed', cors)
 
-    // Per-IP rate limit.
+    // Per-IP rate limit (runs before any body work, so probes are cheap).
     const ip = req.headers.get('CF-Connecting-IP') ?? 'unknown'
     const { success } = await env.RATE_LIMITER.limit({ key: ip })
     if (!success) return err(429, 'rate_limit_error', 'too many requests, slow down', cors)
 
-    // Daily cap across all users.
-    const day = new Date().toISOString().slice(0, 10)
-    const key = `count:${day}`
-    const used = Number((await env.USAGE.get(key)) ?? '0')
-    const cap = Number(env.DAILY_CAP)
-    if (used >= cap) {
-      return err(429, 'rate_limit_error', `daily demo cap (${cap}) reached; try again tomorrow or use your own key`, cors)
+    // Kill switch: `wrangler kv key put --binding USAGE disabled 1 --remote` turns the demo off.
+    if ((await env.USAGE.get('disabled')) === '1') {
+      return err(503, 'api_error', 'the shared demo proxy is currently switched off; use your own key', cors)
     }
-    await env.USAGE.put(key, String(used + 1), { expirationTtl: 60 * 60 * 48 })
 
     // Bounded, validated body.
     const raw = await req.text()
@@ -99,6 +96,26 @@ export default {
     delete body.mcp_servers
     delete body.container
 
+    // Daily + monthly caps across all users; increment only for requests we actually forward.
+    const now = new Date().toISOString()
+    const dayKey = `count:${now.slice(0, 10)}`
+    const monthKey = `count:${now.slice(0, 7)}`
+    const [usedDay, usedMonth] = await Promise.all([env.USAGE.get(dayKey), env.USAGE.get(monthKey)])
+    const dayCap = Number(env.DAILY_CAP)
+    const monthCap = Number(env.MONTHLY_CAP)
+    const d = Number(usedDay ?? '0')
+    const m = Number(usedMonth ?? '0')
+    if (d >= dayCap) {
+      return err(429, 'rate_limit_error', `daily demo cap (${dayCap}) reached; try again tomorrow or use your own key`, cors)
+    }
+    if (m >= monthCap) {
+      return err(429, 'rate_limit_error', `monthly demo cap (${monthCap}) reached; use your own key`, cors)
+    }
+    await Promise.all([
+      env.USAGE.put(dayKey, String(d + 1), { expirationTtl: 60 * 60 * 48 }),
+      env.USAGE.put(monthKey, String(m + 1), { expirationTtl: 60 * 60 * 24 * 40 }),
+    ])
+
     const upstream = await fetch(UPSTREAM, {
       method: 'POST',
       headers: {
@@ -112,10 +129,12 @@ export default {
 
     // Stream (or pass) the upstream response through unchanged, with CORS added.
     const h = new Headers(cors)
-    for (const name of ['content-type', 'request-id', 'x-ratelimit-remaining']) {
+    for (const name of ['content-type', 'request-id']) {
       const v = upstream.headers.get(name)
       if (v) h.set(name, v)
     }
+    h.set('x-demo-remaining-today', String(dayCap - d - 1))
+    h.set('x-demo-remaining-month', String(monthCap - m - 1))
     return new Response(upstream.body, { status: upstream.status, headers: h })
   },
 }
