@@ -40,9 +40,9 @@ function DuckDbSpike() {
   useEffect(() => {
     const t0 = performance.now()
     ;(async () => {
-      await registerParquet('spike.parquet', 'spike.parquet')
+      await registerParquet('customer_360.parquet', 'customer_360.parquet')
       const r = await runSql(
-        "SELECT core, count(*) AS accounts, round(sum(balance), 2) AS total_balance FROM 'spike.parquet' GROUP BY core ORDER BY core",
+        "SELECT source_systems, count(*) AS customers, round(sum(loan_balance)) AS mortgage_balance FROM 'customer_360.parquet' WHERE has_mortgage AND checking_dormant_180d GROUP BY 1 ORDER BY 1",
       )
       setResult(r)
       setMs(Math.round(performance.now() - t0))
@@ -54,7 +54,7 @@ function DuckDbSpike() {
   }, [])
 
   return (
-    <Card title="Spike A: DuckDB-WASM reads Parquet from GitHub Pages">
+    <Card title="Spike A: DuckDB-WASM over the gold layer (customers with a mortgage and a checking account dormant 180 days)">
       {state === 'loading' && <p className="text-sm text-slate-500">Loading DuckDB-WASM and querying…</p>}
       {state === 'error' && <pre className="text-sm text-red-700 whitespace-pre-wrap">{error}</pre>}
       {state === 'ok' && result && (
