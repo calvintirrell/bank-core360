@@ -35,32 +35,28 @@ This demo is the first release I would ship for them, built end to end so the tr
 ## How it works
 
 ```mermaid
-flowchart LR
+flowchart TB
     subgraph Sources
-        A[Core A<br/>legacy in-house core<br/>pipe-delimited, CIF ids, YYYYMMDD, cents]
-        B[Core B<br/>acquired bank's core<br/>JSON lines, UUIDs, ISO dates, dollars]
+        direction LR
+        A["Core A: legacy in-house core<br/>pipe-delimited, CIF ids, YYYYMMDD, cents"]
+        B["Core B: acquired bank's core<br/>JSON lines, UUIDs, ISO dates, dollars"]
     end
-    subgraph Pipeline["Pipeline (Python, runs in GitHub Actions on every push)"]
-        BR[Bronze<br/>landed untouched<br/>6 Delta tables]
-        SV[Silver<br/>one schema per entity<br/>dates, amounts, products, name keys]
-        MT[Match<br/>entity resolution<br/>tier 1, tier 2, review queue]
-        GD[Gold<br/>customer_360, account_360<br/>survivorship, dormancy]
-        EX[Export<br/>Parquet + lineage.json<br/>+ replay cache + agent prompt]
+    subgraph Pipeline["Pipeline: Python, runs in GitHub Actions on every push"]
+        direction LR
+        BR["Bronze<br/>landed untouched"] --> SV["Silver<br/>one schema per entity"] --> MT["Match<br/>entity resolution,<br/>review queue"] --> GD["Gold<br/>customer_360,<br/>account_360"] --> EX["Export<br/>Parquet, lineage.json,<br/>replay cache, agent prompt"]
     end
-    subgraph Browser["Browser (GitHub Pages, static)"]
-        DB[DuckDB-WASM<br/>SQL over gold Parquet]
-        UI[Customer 360, console,<br/>lineage badges]
-        AG[Agent loop<br/>run_sql tool]
+    subgraph Browser["Browser: GitHub Pages, static"]
+        direction LR
+        DB["DuckDB-WASM<br/>SQL over gold Parquet"] --> UI["Customer 360, SQL console,<br/>lineage badges"] --> AG["Agent loop<br/>run_sql tool"]
     end
-    PX[Shared proxy<br/>Cloudflare Worker<br/>key, rate limit, daily cap]
-    CL[Claude API]
+    subgraph AI["Plain-English answers"]
+        direction LR
+        PX["Shared proxy: Cloudflare Worker<br/>key, rate limit, daily cap"] --> CL["Claude API"]
+    end
     A --> BR
     B --> BR
-    BR --> SV --> MT --> GD --> EX
-    EX --> DB --> UI
-    UI --> AG
-    AG <--> DB
-    AG --> PX --> CL
+    EX --> DB
+    AG --> PX
 ```
 
 The pipeline is deterministic for its seed, so CI commits new outputs only when the code changed them. The Delta transaction logs are committed too, so anyone can open `lakehouse/gold/customer_360/_delta_log` and see the table format is real.
