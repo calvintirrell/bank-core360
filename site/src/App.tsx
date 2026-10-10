@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { formatCell, registerParquet, runSql, type QueryResult } from './lib/duckdb'
-import { DEFAULT_MODEL, MODELS, ping, type ModelId } from './lib/anthropic'
+import { DEFAULT_MODEL, MODELS, PROXY_URL, ping, routeLabel, type ModelId } from './lib/anthropic'
 
 type BuildInfo = { run_number: string; sha: string; built_at: string }
 
@@ -114,16 +114,18 @@ function AgentSpike() {
   }
 
   return (
-    <Card title="Spike B: browser → Claude (bring your own key)">
+    <Card title="Spike B: browser → Claude">
       <p className="text-sm text-slate-600">
-        Your key is kept in this tab's session storage only and is sent only to api.anthropic.com.
+        {PROXY_URL
+          ? 'No key needed: requests go through a shared, rate-limited demo proxy. Paste your own key to bypass it.'
+          : 'Enter your own key. It is kept in this tab\'s session storage only and sent only to api.anthropic.com.'}
       </p>
       <div className="flex flex-col gap-2 sm:flex-row">
         <input
           type="password"
           value={apiKey}
           onChange={(e) => setApiKey(e.target.value)}
-          placeholder="sk-ant-…"
+          placeholder={PROXY_URL ? 'optional: your own sk-ant-… key' : 'sk-ant-…'}
           className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm font-mono"
           autoComplete="off"
         />
@@ -138,13 +140,18 @@ function AgentSpike() {
         </select>
         <button
           onClick={onPing}
-          disabled={busy || !apiKey}
+          disabled={busy || (!apiKey && !PROXY_URL)}
           className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
         >
           {busy ? 'Calling…' : 'Ping'}
         </button>
       </div>
-      {reply && <p className="text-sm">Model replied: <span className="font-mono">{reply}</span></p>}
+      {reply && (
+        <p className="text-sm">
+          Model replied: <span className="font-mono">{reply}</span>{' '}
+          <span className="text-slate-500">via {routeLabel(apiKey)}</span>
+        </p>
+      )}
       {error && <pre className="text-sm text-red-700 whitespace-pre-wrap">{error}</pre>}
     </Card>
   )

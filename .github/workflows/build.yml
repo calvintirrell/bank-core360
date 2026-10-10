@@ -69,6 +69,7 @@ jobs:
         env:
           BUILD_RUN_NUMBER: ${{ github.run_number }}
           BUILD_SHA: ${{ github.sha }}
+          VITE_PROXY_URL: ${{ vars.PROXY_URL }}
       - uses: actions/configure-pages@v5
         with:
           enablement: true

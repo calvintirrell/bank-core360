@@ -25,3 +25,6 @@ site/.vite/
 # generated at build time from lakehouse/export
 site/public/data/
 *.tsbuildinfo
+
+# cloudflare worker local state
+.wrangler/
