@@ -95,6 +95,11 @@
     "traps_merged": 0,
     "truth_pairs": 300
   },
+  "replay": {
+    "questions": 6,
+    "regenerated": 0,
+    "with_transcript": 0
+  },
   "schema_version": 1,
   "seed": 360,
   "silver": {

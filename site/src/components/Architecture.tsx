@@ -8,7 +8,7 @@ const STEPS: Array<{ title: string; detail: string; tone: string }> = [
   { title: 'Gold', detail: 'customer_360 and account_360 as Delta, with survivorship and dormancy rules', tone: 'border-yellow-300 bg-yellow-50' },
   { title: 'Export + lineage', detail: 'Parquet for the browser, lineage.json mapping every column to its source and rule', tone: 'border-emerald-300 bg-emerald-50' },
   { title: 'Browser', detail: 'DuckDB-WASM runs SQL over the gold Parquet on this page', tone: 'border-sky-300 bg-sky-50' },
-  { title: 'Agent', detail: 'Claude writes the SQL, runs it here, explains the answer with lineage (next phase)', tone: 'border-pink-300 bg-pink-50' },
+  { title: 'Agent', detail: 'Claude writes the SQL, runs it here, explains the answer, with lineage on every column', tone: 'border-pink-300 bg-pink-50' },
 ]
 
 export function Architecture() {

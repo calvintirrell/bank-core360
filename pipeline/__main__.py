@@ -9,7 +9,7 @@ import time
 
 import polars as pl
 
-from pipeline import AS_OF, EXPORT, GOLD, SEED, SILVER, bronze, gold, lineage, match, silver
+from pipeline import AS_OF, EXPORT, GOLD, SEED, SILVER, agent_prompt, bronze, gold, lineage, match, replay, silver
 from pipeline.delta import read_table
 
 
@@ -63,6 +63,8 @@ def main() -> int:
     lineage.write()
     e = export()
     (EXPORT / "raw_samples.json").write_text(json.dumps(raw_samples(), indent=1) + "\n")
+    agent_prompt.write()
+    r = replay.write()
     manifest = {
         "schema_version": 1,
         "seed": SEED,
@@ -71,6 +73,7 @@ def main() -> int:
         "silver": s,
         "gold": g,
         "export": e,
+        "replay": r,
         "match": {
             k: m[k]
             for k in (

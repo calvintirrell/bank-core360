@@ -44,7 +44,7 @@ export default function App() {
         <Customer360 lineage={lh?.lineage ?? null} />
         <MatchReport report={lh?.matchReport ?? null} />
         <SqlConsole lineage={lh?.lineage ?? null} />
-        <AgentPanel />
+        <AgentPanel lineage={lh?.lineage ?? null} />
         <Footer />
       </main>
     </div>

@@ -26,6 +26,8 @@ jobs:
           enable-cache: true
       - run: uv sync --frozen
       - run: uv run python -m pipeline
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       - run: uv run pytest -q
         if: hashFiles('tests/**/*.py') != ''
       - name: commit lakehouse outputs (only when the data actually changed)

@@ -35,6 +35,20 @@ export type RawSamples = Record<'core_a' | 'core_b', Record<string, RawSample>>
 
 export type BuildInfo = { run_number: string; sha: string; built_at: string }
 
+/** Shape shared with pipeline/replay.py (rows as arrays). */
+export type ToolResult = { columns: string[]; rows: unknown[][]; row_count: number }
+export type ReplayStep = { sql: string; result: ToolResult | null; error: string | null }
+export type ReplayAgent = {
+  model: string
+  calls: number
+  usage: { input_tokens: number; output_tokens: number }
+  steps: ReplayStep[]
+  explanation: string | null
+}
+export type ReplayEntry = { id: string; question: string; fingerprint: string; sql: string; result: ToolResult; agent: ReplayAgent | null }
+export type Replay = { schema_version: number; questions: ReplayEntry[] }
+export type AgentTool = { name: string; description: string; input_schema: Record<string, unknown>; strict: boolean }
+
 async function loadJson<T>(file: string): Promise<T> {
   const r = await fetch(dataUrl(file))
   if (!r.ok) throw new Error(`${file}: HTTP ${r.status}`)
@@ -51,6 +65,20 @@ export async function loadLakehouse(): Promise<Lakehouse> {
     loadJson<RawSamples>('raw_samples.json'),
   ])
   return { lineage, manifest, matchReport, rawSamples }
+}
+
+export function loadReplay(): Promise<Replay> {
+  return loadJson<Replay>('replay.json')
+}
+
+export async function loadAgentPrompt(): Promise<string> {
+  const r = await fetch(dataUrl('agent_prompt.md'))
+  if (!r.ok) throw new Error(`agent_prompt.md: HTTP ${r.status}`)
+  return r.text()
+}
+
+export function loadAgentTool(): Promise<AgentTool> {
+  return loadJson<AgentTool>('agent_tool.json')
 }
 
 export function loadBuildInfo(): Promise<BuildInfo | null> {

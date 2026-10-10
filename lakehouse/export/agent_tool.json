@@ -1,0 +1,18 @@
+{
+ "name": "run_sql",
+ "description": "Run one read-only DuckDB SQL query against the customer-360 lakehouse and get the result. Tables: customer_360, account_360, transactions. Use LIMIT (max 200). Returns columns, the first rows and the total row count.",
+ "input_schema": {
+  "type": "object",
+  "properties": {
+   "sql": {
+    "type": "string",
+    "description": "A single SELECT or WITH query in DuckDB SQL."
+   }
+  },
+  "required": [
+   "sql"
+  ],
+  "additionalProperties": false
+ },
+ "strict": true
+}

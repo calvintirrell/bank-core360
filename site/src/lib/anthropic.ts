@@ -31,6 +31,14 @@ export function makeClient(apiKey: string): Anthropic {
 /** Thrown when the shared proxy's daily demo cap has been reached. */
 export class DemoCapError extends Error {}
 
+/** Maps SDK errors from the proxy into friendlier ones; passes everything else through. */
+export function translateError(e: unknown): unknown {
+  if (e instanceof Anthropic.RateLimitError && /daily demo cap/i.test(e.message)) return new DemoCapError('Daily demo limit reached.')
+  if (e instanceof Anthropic.RateLimitError && /monthly demo cap/i.test(e.message)) return new DemoCapError('Monthly demo limit reached.')
+  if (e instanceof Anthropic.APIError && e.status === 503 && /switched off/i.test(e.message)) return new Error('The shared demo proxy is switched off right now.')
+  return e
+}
+
 export type Quota = {
   cap_today: number
   used_today: number
@@ -70,10 +78,7 @@ export async function ping(apiKey: string, model: ModelId = DEFAULT_MODEL): Prom
       messages: [{ role: 'user', content: 'Reply with exactly one word: READY' }],
     })
   } catch (e) {
-    if (e instanceof Anthropic.RateLimitError && /daily demo cap/i.test(e.message)) {
-      throw new DemoCapError('Daily demo limit reached.')
-    }
-    throw e
+    throw translateError(e)
   }
   if (res.stop_reason === 'refusal') return `refused (${res.stop_details?.category ?? 'unknown'})`
   return res.content
