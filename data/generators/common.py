@@ -49,13 +49,16 @@ NICKNAMES = {
 
 # Overlap difficulty bands by index within the 300 overlapping people.
 OVERLAP_KINDS = (
-    [("clean", 200)]
+    [("clean", 180)]
     + [("nickname", 30)]
     + [("typo", 15)]
     + [("middle_hyphen", 15)]
     + [("ssn_missing", 10)]
     + [("lastname_changed", 15)]
     + [("lastname_changed_ssn_missing", 15)]
+    # the next two exist so the phone / postal-code boosts are decisive, not decorative:
+    + [("ssn_missing_moved", 10)]  # same name, no SSN in B, new address -> boost gone -> review
+    + [("lastname_changed_ssn_missing_moved_newphone", 10)]  # nothing left to match on -> unmatched
 )
 
 
@@ -147,6 +150,20 @@ def vary_for_core_b(p: Person, kind: str, rng: random.Random, fake: Faker) -> tu
         return replace(p, last=fake.last_name()), True
     if kind == "lastname_changed_ssn_missing":
         return replace(p, last=fake.last_name()), False
+    if kind == "ssn_missing_moved":
+        return replace(p, street=fake.street_address(), city=fake.city(), zip=f"{rng.randint(10000, 99999)}"), False
+    if kind == "lastname_changed_ssn_missing_moved_newphone":
+        return (
+            replace(
+                p,
+                last=fake.last_name(),
+                street=fake.street_address(),
+                city=fake.city(),
+                zip=f"{rng.randint(10000, 99999)}",
+                phone=f"{rng.randint(200, 989)}{rng.randint(200, 999)}{rng.randint(0, 9999):04d}",
+            ),
+            False,
+        )
     raise ValueError(kind)
 
 

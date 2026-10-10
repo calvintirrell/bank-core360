@@ -92,8 +92,16 @@ function ResultTable({ result }: { result: QueryResult }) {
   )
 }
 
+/** The own-key field is hidden by default; append ?byok to the URL to reveal it (or it shows
+ *  automatically when a key is already stored in this tab's session). */
+function byokRequested(): boolean {
+  return new URLSearchParams(window.location.search).has('byok')
+}
+
 function AgentSpike() {
   const [apiKey, setApiKey] = useState(() => sessionStorage.getItem('bc360.apiKey') ?? '')
+  const showByok = byokRequested() || apiKey !== '' || !PROXY_URL
+  const models = showByok ? MODELS : MODELS.filter((m) => m.proxy)
   const [model, setModel] = useState<ModelId>(DEFAULT_MODEL)
   const [busy, setBusy] = useState(false)
   const [reply, setReply] = useState('')
@@ -117,24 +125,27 @@ function AgentSpike() {
     <Card title="Spike B: browser → Claude">
       <p className="text-sm text-slate-600">
         {PROXY_URL
-          ? 'No key needed: requests go through a shared, rate-limited demo proxy. Paste your own key to bypass it.'
-          : 'Enter your own key. It is kept in this tab\'s session storage only and sent only to api.anthropic.com.'}
+          ? 'No key needed: requests go through a shared, rate-limited demo proxy.'
+          : "Enter your own key. It is kept in this tab's session storage only and sent only to api.anthropic.com."}
+        {showByok && PROXY_URL && ' Paste your own key to bypass it.'}
       </p>
       <div className="flex flex-col gap-2 sm:flex-row">
-        <input
-          type="password"
-          value={apiKey}
-          onChange={(e) => setApiKey(e.target.value)}
-          placeholder={PROXY_URL ? 'optional: your own sk-ant-… key' : 'sk-ant-…'}
-          className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm font-mono"
-          autoComplete="off"
-        />
+        {showByok && (
+          <input
+            type="password"
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+            placeholder={PROXY_URL ? 'optional: your own sk-ant-… key' : 'sk-ant-…'}
+            className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm font-mono"
+            autoComplete="off"
+          />
+        )}
         <select
           value={model}
           onChange={(e) => setModel(e.target.value as ModelId)}
           className="rounded-md border border-slate-300 px-3 py-2 text-sm"
         >
-          {MODELS.map((m) => (
+          {models.map((m) => (
             <option key={m.id} value={m.id}>{m.label}</option>
           ))}
         </select>

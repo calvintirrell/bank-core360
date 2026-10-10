@@ -52,7 +52,16 @@ def main() -> int:
         "export": e,
         "match": {
             k: m[k]
-            for k in ("auto_merged", "tier_1_deterministic", "tier_2_fuzzy", "review_queue", "precision", "recall", "traps_merged")
+            for k in (
+                "truth_pairs",
+                "auto_merged",
+                "tier_1_deterministic",
+                "tier_2_fuzzy",
+                "review_queue",
+                "precision",
+                "recall",
+                "traps_merged",
+            )
             if k in m
         },
     }

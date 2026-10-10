@@ -1,12 +1,12 @@
 {
   "as_of": "2026-09-30",
   "bronze": {
-    "core_a_acctmast": 2389,
+    "core_a_acctmast": 2454,
     "core_a_custmast": 1100,
-    "core_a_txnhist": 24674,
-    "core_b_accounts": 2503,
+    "core_a_txnhist": 24865,
+    "core_b_accounts": 2467,
     "core_b_customers": 1200,
-    "core_b_transactions": 25326
+    "core_b_transactions": 25135
   },
   "export": {
     "account_360": {
@@ -30,7 +30,7 @@
         "debits_365d",
         "is_dormant_180d"
       ],
-      "rows": 4892
+      "rows": 4921
     },
     "customer_360": {
       "columns": [
@@ -65,7 +65,7 @@
         "checking_last_txn_ts",
         "checking_dormant_180d"
       ],
-      "rows": 2015
+      "rows": 2035
     },
     "transactions": {
       "columns": [
@@ -82,22 +82,23 @@
     }
   },
   "gold": {
-    "account_360": 4892,
-    "customer_360": 2015
+    "account_360": 4921,
+    "customer_360": 2035
   },
   "match": {
-    "auto_merged": 285,
+    "auto_merged": 265,
     "precision": 1.0,
-    "recall": 0.95,
-    "review_queue": 15,
-    "tier_1_deterministic": 221,
-    "tier_2_fuzzy": 64,
-    "traps_merged": 0
+    "recall": 0.8833,
+    "review_queue": 25,
+    "tier_1_deterministic": 197,
+    "tier_2_fuzzy": 68,
+    "traps_merged": 0,
+    "truth_pairs": 300
   },
   "schema_version": 1,
   "seed": 360,
   "silver": {
-    "accounts": 4892,
+    "accounts": 4921,
     "customers": 2300,
     "transactions": 50000
   }

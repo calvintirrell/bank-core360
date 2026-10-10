@@ -46,7 +46,8 @@ def test_row_counts(con, manifest):
     assert con.sql("SELECT count(*) FROM transactions").fetchone()[0] == 50_000
     assert con.sql("SELECT count(*) FROM customer_360").fetchone()[0] == manifest["export"]["customer_360"]["rows"]
     # 2,000 unique people + review-queue pairs that stay unmerged (one extra row each)
-    assert con.sql("SELECT count(*) FROM customer_360").fetchone()[0] == 2000 + manifest["match"]["review_queue"]
+    unmatched_true_pairs = manifest["match"]["truth_pairs"] - manifest["match"]["auto_merged"]
+    assert con.sql("SELECT count(*) FROM customer_360").fetchone()[0] == 2000 + unmatched_true_pairs
 
 
 def test_no_orphan_accounts_or_transactions(con):
@@ -86,7 +87,7 @@ def test_transaction_sign_convention(con):
 
 def test_match_quality_against_truth(match_report):
     assert match_report["precision"] == 1.0, "no false merges allowed"
-    assert match_report["recall"] >= 0.90
+    assert match_report["recall"] >= 0.85  # 10 overlap pairs are designed to be undetectable
     assert match_report["traps_merged"] == 0
     assert match_report["tier_1_deterministic"] > match_report["tier_2_fuzzy"] > 0
     assert match_report["review_queue"] > 0
@@ -94,12 +95,17 @@ def test_match_quality_against_truth(match_report):
 
 def test_each_overlap_kind_lands_where_designed(match_report):
     k = match_report["by_kind"]
-    assert k["clean"]["merged"] == 200
+    assert k["clean"]["merged"] == 180
     assert k["nickname"]["merged"] == 30
     assert k["middle_hyphen"]["merged"] == 15
     assert k["ssn_missing"]["merged"] == 10
     assert k["lastname_changed_ssn_missing"]["review"] == 15
     assert k["trap"]["merged"] == 0
+    # phone / postal-code boosts are decisive: same name + no SSN merges only while the contact
+    # details still agree; once the person moved, it drops to review
+    assert k["ssn_missing"]["merged"] == 10
+    assert k["ssn_missing_moved"]["review"] == 10
+    assert k["lastname_changed_ssn_missing_moved_newphone"]["unmatched"] == 10
 
 
 def test_merged_customers_have_both_ids(con):
@@ -107,7 +113,7 @@ def test_merged_customers_have_both_ids(con):
         "SELECT count(*) FROM customer_360 WHERE source_systems='core_a+core_b' AND (core_a_cif IS NULL OR core_b_customer_id IS NULL OR match_confidence IS NULL)"
     ).fetchone()[0]
     assert bad == 0
-    assert con.sql("SELECT count(*) FROM customer_360 WHERE source_systems='core_a+core_b'").fetchone()[0] == 285
+    assert con.sql("SELECT count(*) FROM customer_360 WHERE source_systems='core_a+core_b'").fetchone()[0] == 265
 
 
 # --- business rules -----------------------------------------------------------------------------
@@ -122,7 +128,10 @@ def test_dormancy_matches_generator_truth(con):
             "SELECT source_system, source_account_id FROM account_360 WHERE is_dormant_180d AND product_type='checking'"
         ).fetchall()
     }
-    assert flagged == truth
+    # every designed-dormant account is flagged; a handful more may be dormant by chance
+    # (all of an account's transactions happened to fall outside the 180-day window)
+    assert truth <= flagged
+    assert len(flagged - truth) <= 3
 
 
 def test_gate_question_mortgage_and_dormant_checking(con):
