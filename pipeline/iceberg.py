@@ -47,10 +47,11 @@ def run(fresh: bool) -> dict:
             tbl.append(arrow)
         tbl = cat.load_table(ident)
         snaps = list(tbl.snapshots())
+        # Deterministic summary only: snapshot ids and metadata file names carry UUIDs and would
+        # make the export differ on every run, which the CI commit rule treats as a data change.
         info[name] = {
-            "metadata_location": tbl.metadata_location.replace(f"file://{LAKEHOUSE.parent}/", ""),
+            "metadata_dir": f"lakehouse/iceberg/warehouse/gold/{name}/metadata",
             "snapshots": len(snaps),
-            "current_snapshot_id": tbl.current_snapshot().snapshot_id if tbl.current_snapshot() else None,
             "rows": len(arrow),
             "as_of": get_as_of().isoformat(),
         }

@@ -14,7 +14,7 @@ const STEPS: Array<{ title: string; detail: string; tone: string }> = [
   { title: 'Agent', detail: 'Claude writes the SQL, runs it here, explains the answer, with lineage on every column', tone: 'border-pink-300 bg-pink-50' },
 ]
 
-type IcebergSummary = { format: string; catalog: string; warehouse: string; why: string; tables: Record<string, { metadata_location: string; snapshots: number; rows: number; as_of: string }> }
+type IcebergSummary = { format: string; catalog: string; warehouse: string; why: string; tables: Record<string, { metadata_dir: string; snapshots: number; rows: number; as_of: string }> }
 
 export function Architecture({ embedded }: { embedded?: boolean }) {
   const [ice, setIce] = useState<IcebergSummary | null>(null)
@@ -50,8 +50,8 @@ export function Architecture({ embedded }: { embedded?: boolean }) {
                 <li key={t} className="flex flex-wrap items-baseline gap-x-3">
                   <span className="font-mono font-semibold">gold.{t}</span>
                   <span className="text-slate-600">{v.rows.toLocaleString()} rows · {v.snapshots} snapshots</span>
-                  <a className="font-mono text-slate-500 underline" href={`https://github.com/calvintirrell/bank-core360/blob/main/${v.metadata_location}`} target="_blank" rel="noreferrer">
-                    {v.metadata_location.split('/').slice(-1)[0]}
+                  <a className="font-mono text-slate-500 underline" href={`https://github.com/calvintirrell/bank-core360/tree/main/${v.metadata_dir}`} target="_blank" rel="noreferrer">
+                    metadata/
                   </a>
                 </li>
               ))}

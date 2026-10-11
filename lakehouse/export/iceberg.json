@@ -4,23 +4,20 @@
  "warehouse": "lakehouse/iceberg/warehouse",
  "tables": {
   "customer_360": {
-   "metadata_location": "lakehouse/iceberg/warehouse/gold/customer_360/metadata/00002-008403d6-0f31-432c-836d-951b85d36e5a.metadata.json",
+   "metadata_dir": "lakehouse/iceberg/warehouse/gold/customer_360/metadata",
    "snapshots": 3,
-   "current_snapshot_id": 6268728699023723600,
    "rows": 2070,
    "as_of": "2026-10-31"
   },
   "account_360": {
-   "metadata_location": "lakehouse/iceberg/warehouse/gold/account_360/metadata/00002-2735a94e-21b4-473c-ab26-e62dc8c577ab.metadata.json",
+   "metadata_dir": "lakehouse/iceberg/warehouse/gold/account_360/metadata",
    "snapshots": 3,
-   "current_snapshot_id": 1437189282276256499,
    "rows": 5021,
    "as_of": "2026-10-31"
   },
   "review_queue": {
-   "metadata_location": "lakehouse/iceberg/warehouse/gold/review_queue/metadata/00002-50bebe28-6a55-44c4-92f9-3a5fc96dc105.metadata.json",
+   "metadata_dir": "lakehouse/iceberg/warehouse/gold/review_queue/metadata",
    "snapshots": 3,
-   "current_snapshot_id": 1320277428199866226,
    "rows": 20,
    "as_of": "2026-10-31"
   }
