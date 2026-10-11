@@ -3,6 +3,8 @@ import { AgentPanel } from './components/AgentPanel'
 import { Architecture } from './components/Architecture'
 import { Collapsible } from './components/Collapsible'
 import { Cores } from './components/Cores'
+import { Decisions } from './components/Decisions'
+import { Mismatches } from './components/Mismatches'
 import { Customer360 } from './components/Customer360'
 import { Footer } from './components/Footer'
 import { Hero } from './components/Hero'
@@ -62,7 +64,7 @@ function Shell() {
         <Hero manifest={lh?.manifest ?? null} report={lh?.matchReport ?? null} />
         <AgentPanel lineage={lh?.lineage ?? null} />
         <Customer360 lineage={lh?.lineage ?? null} />
-        <MatchReport report={lh?.matchReport ?? null} />
+        {bank ? <Decisions report={lh?.matchReport ?? null} /> : <MatchReport report={lh?.matchReport ?? null} />}
         <Collapsible
           id="sql"
           title={bank ? 'For analysts: run your own SQL' : 'SQL console'}
@@ -74,10 +76,16 @@ function Shell() {
         <Collapsible
           id="cores"
           title={bank ? 'What the bank handed us' : 'Two cores that disagree'}
-          teaser="The two systems' raw files, exactly as received: different ids, date formats, product codes and currencies."
+          teaser={bank ? 'The same facts, written two different ways by the two banks. See the actual rows.' : "The two systems' raw files, exactly as received: different ids, date formats, product codes and currencies."}
           defaultOpen={!bank}
         >
-          <Cores samples={lh?.rawSamples ?? null} lineage={lh?.lineage ?? null} embedded />
+          {bank ? (
+            <Mismatches samples={lh?.rawSamples ?? null}>
+              <Cores samples={lh?.rawSamples ?? null} lineage={lh?.lineage ?? null} embedded />
+            </Mismatches>
+          ) : (
+            <Cores samples={lh?.rawSamples ?? null} lineage={lh?.lineage ?? null} embedded />
+          )}
         </Collapsible>
         <Collapsible
           id="architecture"

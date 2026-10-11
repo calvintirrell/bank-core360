@@ -185,6 +185,13 @@ def test_every_exported_column_has_lineage(table):
     assert set(cols) == set(documented), f"lineage drift in {table}: {set(cols) ^ set(documented)}"
 
 
+def test_every_column_has_a_plain_sentence():
+    for table, t in LINEAGE["tables"].items():
+        for name, c in t["columns"].items():
+            assert c.get("plain", "").strip(), f"{table}.{name} has no plain-language sentence"
+            assert c["plain"].endswith("."), f"{table}.{name} plain sentence should end with a period"
+
+
 def test_lineage_rules_all_defined():
     rules = LINEAGE["rules"]
     for table in LINEAGE["tables"].values():

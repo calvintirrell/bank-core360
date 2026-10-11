@@ -17,8 +17,9 @@ def src(system: str, table: str, field: str) -> dict:
     return {"system": system, "table": table, "field": field}
 
 
-def col(sources: list[dict], transform: str, rules: list[str]) -> dict:
-    return {"sources": sources, "transform": transform, "rules": rules}
+def col(sources: list[dict], transform: str, rules: list[str], plain: str = "") -> dict:
+    """plain = one sentence a non-technical reader understands; filled in by PLAIN below."""
+    return {"sources": sources, "transform": transform, "rules": rules, "plain": plain}
 
 
 BOTH_CUST = lambda fa, fb: [src(A, "CUSTMAST.psv", fa), src(B, "customers.jsonl", fb)]
@@ -167,10 +168,12 @@ LINEAGE = {
     "as_of": AS_OF.isoformat(),
     "systems": {
         A: {
+            "plain": "Harbor Bank's system",
             "label": "Core A: Harbor Bank (legacy in-house core)",
             "conventions": "CIF numbers, YYYYMMDD dates, product codes DDA/SAV/MTG/CDA, balances in integer cents, pipe-delimited extracts, upper-case names",
         },
         B: {
+            "plain": "Riverside Bank's system",
             "label": "Core B: Riverside Bank (acquired bank's core)",
             "conventions": "UUID ids, ISO-8601 dates, product_type strings, dollar balances, JSON lines with nested address",
         },
@@ -183,6 +186,98 @@ LINEAGE = {
         "review_queue": {"grain": "one row per unmerged cross-core candidate pair awaiting human review", "columns": REVIEW_QUEUE},
     },
 }
+
+
+# One sentence per column for the non-technical view. Tests assert every exported column has one.
+PLAIN: dict[str, dict[str, str]] = {
+    "customer_360": {
+        "customer_key": "Our own id for one real person, assigned after the two banks' records were matched.",
+        "full_name": "The person's name. If they were in both banks, Riverside Bank's spelling is shown.",
+        "first_name": "First name, Riverside Bank's version when both banks have one.",
+        "last_name": "Last name, Riverside Bank's version when both banks have one.",
+        "dob": "Date of birth, converted from each bank's own date format.",
+        "email": "Email address. Only Riverside Bank's system stores one, so Harbor-only customers have none.",
+        "phone": "Phone number reduced to ten digits so both banks' formats compare.",
+        "city": "City from the customer's address, Riverside Bank's version when both have one.",
+        "state": "State from the customer's address, Riverside Bank's version when both have one.",
+        "postal_code": "Postal code from the customer's address.",
+        "customer_since": "The earliest date either bank had a relationship with this person.",
+        "is_active": "Marked active if either bank considers the customer active.",
+        "source_systems": "Which bank's records this person came from: Harbor, Riverside, or both.",
+        "in_core_a": "Whether Harbor Bank's system has a record for this person.",
+        "in_core_b": "Whether Riverside Bank's system has a record for this person.",
+        "core_a_cif": "Harbor Bank's customer number for this person, if any.",
+        "core_b_customer_id": "Riverside Bank's customer id for this person, if any.",
+        "match_tier": "How the two banks' records were linked: 1 means an exact match on name and SSN digits, 2 means a close match scored by similarity.",
+        "match_confidence": "How sure the matching was, from 0 to 1. Exact matches score 1.",
+        "open_accounts": "How many open accounts the person has across both banks.",
+        "has_checking": "Has at least one open checking account.",
+        "has_savings": "Has at least one open savings account.",
+        "has_mortgage": "Has at least one open mortgage.",
+        "has_cd": "Has at least one open certificate of deposit.",
+        "deposit_balance": "Total money in open checking, savings and CD accounts, in dollars.",
+        "loan_balance": "Total owed on open loans, in dollars.",
+        "last_activity_ts": "The most recent transaction on any of the person's open accounts.",
+        "txn_count_90d": "Number of transactions in the 90 days before the as-of date.",
+        "checking_last_txn_ts": "The most recent transaction on any open checking account.",
+        "checking_dormant_180d": "True if at least one open checking account has had no transactions for 180 days.",
+    },
+    "account_360": {
+        "customer_key": "Our own id for the person who holds this account.",
+        "source_system": "Which bank's system the account lives in.",
+        "source_account_id": "The account number as that bank's system records it.",
+        "source_customer_id": "The customer id as that bank's system records it.",
+        "product_type": "What kind of account it is, using one shared vocabulary for both banks.",
+        "product_category": "Whether the account holds the customer's money (deposit) or ours (loan).",
+        "source_product_code": "The product code exactly as that bank's system wrote it.",
+        "opened_on": "The date the account was opened, converted from the bank's date format.",
+        "balance": "Current balance in dollars. Harbor Bank stores cents, so those were divided by 100.",
+        "is_open": "Whether the account is open today.",
+        "last_txn_ts": "The most recent transaction on this account.",
+        "days_since_last_txn": "Days between the last transaction and the as-of date.",
+        "txn_count_90d": "Transactions in the 90 days before the as-of date.",
+        "txn_count_180d": "Transactions in the 180 days before the as-of date.",
+        "txn_count_365d": "Transactions in the whole year of data.",
+        "credits_365d": "Money that came into the account over the year.",
+        "debits_365d": "Money that left the account over the year.",
+        "is_dormant_180d": "True if the account is open but has had no transactions for 180 days.",
+    },
+    "transactions": {
+        "customer_key": "Our own id for the person whose account this transaction belongs to.",
+        "source_system": "Which bank's system recorded the transaction.",
+        "source_txn_id": "The transaction id as that bank's system recorded it.",
+        "source_account_id": "The account number as that bank's system records it.",
+        "txn_ts": "When the transaction happened, converted from each bank's date format.",
+        "amount": "The amount in dollars. Money in is positive, money out is negative.",
+        "memo": "The description on the transaction.",
+        "direction": "Whether money came in (credit) or went out (debit).",
+    },
+    "review_queue": {
+        "priority": "Our suggested order to review these pairs: most money at stake first.",
+        "core_a_customer_key": "Our id for the Harbor Bank side of this possible duplicate.",
+        "core_b_customer_key": "Our id for the Riverside Bank side of this possible duplicate.",
+        "core_a_cif": "Harbor Bank's customer number for this record.",
+        "core_b_customer_id": "Riverside Bank's customer id for this record.",
+        "core_a_name": "The name as Harbor Bank has it.",
+        "core_b_name": "The name as Riverside Bank has it.",
+        "dob": "The date of birth both records share.",
+        "confidence": "How likely the two records are the same person, from 0 to 1. Below 0.80 we ask a person instead of merging.",
+        "name_similarity": "How alike the two names are, from 0 to 1.",
+        "ssn_signal": "Whether the last four SSN digits agree (1) or are missing on one side (0.5).",
+        "core_b_ssn_missing": "True when Riverside Bank has no SSN digits on file for this record.",
+        "phone_match": "Whether the phone numbers agree.",
+        "postal_code_match": "Whether the postal codes agree.",
+        "core_a_balance": "Deposits plus loans on the Harbor Bank side.",
+        "core_b_balance": "Deposits plus loans on the Riverside Bank side.",
+        "combined_balance": "Money across both records together.",
+        "core_a_open_accounts": "Open accounts on the Harbor Bank side.",
+        "core_b_open_accounts": "Open accounts on the Riverside Bank side.",
+    },
+}
+
+for _table, _cols in PLAIN.items():
+    for _name, _plain in _cols.items():
+        LINEAGE["tables"][_table]["columns"][_name]["plain"] = _plain
 
 
 def write() -> None:

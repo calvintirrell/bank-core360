@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { badgeText, lookupColumn, systemsOf, type Lineage } from '../lib/lineage'
+import { badgeText, lookupColumn, systemsOf, systemsSentence, type Lineage } from '../lib/lineage'
+import { useBankMode } from '../lib/ModeContext'
 
 const COLORS: Record<string, string> = {
   A: 'bg-amber-100 text-amber-900 border-amber-300',
@@ -13,6 +14,7 @@ const CARD_W = 300
 /** Small source-system badge next to a column name; click for the full lineage card.
  *  The card is position:fixed so it is never clipped by a scrolling table container. */
 export function LineageBadge({ column, lineage, table }: { column: string; lineage: Lineage | null; table?: string }) {
+  const bank = useBankMode()
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
   const btn = useRef<HTMLButtonElement>(null)
   const card = useRef<HTMLDivElement>(null)
@@ -68,10 +70,15 @@ export function LineageBadge({ column, lineage, table }: { column: string; linea
           className="z-50 rounded-lg border border-slate-200 bg-white p-3 text-left text-xs font-normal normal-case tracking-normal text-slate-800 shadow-xl"
         >
           <div className="mb-1 flex items-start justify-between gap-2">
-            <span className="font-mono font-semibold">{hit ? `${hit.table}.${column}` : column}</span>
+            <span className={bank ? 'font-semibold' : 'font-mono font-semibold'}>{bank ? column.replace(/_/g, ' ') : hit ? `${hit.table}.${column}` : column}</span>
             <button type="button" onClick={() => setPos(null)} className="text-slate-400 hover:text-slate-700" aria-label="close">×</button>
           </div>
-          {hit ? (
+          {hit && bank ? (
+            <div className="space-y-1 text-slate-700">
+              <p>{systemsSentence(lineage, systemsOf(hit.lineage))}</p>
+              {hit.lineage.plain && <p>{hit.lineage.plain}</p>}
+            </div>
+          ) : hit ? (
             <>
               <div className="mb-1 text-slate-600">{hit.lineage.transform}</div>
               <ul className="mb-1 space-y-0.5">
@@ -91,7 +98,7 @@ export function LineageBadge({ column, lineage, table }: { column: string; linea
               )}
             </>
           ) : (
-            <div className="text-slate-600">Computed in this query (aggregate or expression), not a lakehouse column.</div>
+            <div className="text-slate-600">{bank ? 'Worked out in this answer from the columns above, not stored anywhere.' : 'Computed in this query (aggregate or expression), not a lakehouse column.'}</div>
           )}
         </div>
       )}

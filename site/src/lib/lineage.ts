@@ -2,11 +2,11 @@
 
 export type SystemId = 'core_a' | 'core_b'
 export type LineageSource = { system: SystemId; table: string; field: string }
-export type ColumnLineage = { sources: LineageSource[]; transform: string; rules: string[] }
+export type ColumnLineage = { sources: LineageSource[]; transform: string; rules: string[]; plain?: string }
 export type TableLineage = { grain: string; columns: Record<string, ColumnLineage> }
 export type Lineage = {
   as_of: string
-  systems: Record<SystemId, { label: string; conventions: string }>
+  systems: Record<SystemId, { label: string; conventions: string; plain?: string }>
   rules: Record<string, string>
   tables: Record<string, TableLineage>
 }
@@ -36,4 +36,12 @@ export function badgeText(systems: SystemId[]): string {
   if (systems[0] === 'core_a') return 'A'
   if (systems[0] === 'core_b') return 'B'
   return '?'
+}
+
+/** "Harbor Bank's system", "Riverside Bank's system", or both, in words. */
+export function systemsSentence(lineage: Lineage, systems: SystemId[]): string {
+  const names = systems.map((id) => lineage.systems[id].plain ?? lineage.systems[id].label)
+  if (names.length === 2) return `Combined from ${names[0]} and ${names[1]}.`
+  if (names.length === 1) return `From ${names[0]}.`
+  return 'Computed in this query.'
 }

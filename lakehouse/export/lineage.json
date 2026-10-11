@@ -2,10 +2,12 @@
   "as_of": "2026-09-30",
   "systems": {
     "core_a": {
+      "plain": "Harbor Bank's system",
       "label": "Core A: Harbor Bank (legacy in-house core)",
       "conventions": "CIF numbers, YYYYMMDD dates, product codes DDA/SAV/MTG/CDA, balances in integer cents, pipe-delimited extracts, upper-case names"
     },
     "core_b": {
+      "plain": "Riverside Bank's system",
       "label": "Core B: Riverside Bank (acquired bank's core)",
       "conventions": "UUID ids, ISO-8601 dates, product_type strings, dollar balances, JSON lines with nested address"
     }
@@ -68,7 +70,8 @@
             "ER-04",
             "ER-06",
             "ER-07"
-          ]
+          ],
+          "plain": "Our own id for one real person, assigned after the two banks' records were matched."
         },
         "full_name": {
           "sources": [
@@ -87,7 +90,8 @@
           "rules": [
             "S-01",
             "G-01"
-          ]
+          ],
+          "plain": "The person's name. If they were in both banks, Riverside Bank's spelling is shown."
         },
         "first_name": {
           "sources": [
@@ -106,7 +110,8 @@
           "rules": [
             "S-01",
             "G-01"
-          ]
+          ],
+          "plain": "First name, Riverside Bank's version when both banks have one."
         },
         "last_name": {
           "sources": [
@@ -125,7 +130,8 @@
           "rules": [
             "S-01",
             "G-01"
-          ]
+          ],
+          "plain": "Last name, Riverside Bank's version when both banks have one."
         },
         "dob": {
           "sources": [
@@ -144,7 +150,8 @@
           "rules": [
             "S-02",
             "S-03"
-          ]
+          ],
+          "plain": "Date of birth, converted from each bank's own date format."
         },
         "email": {
           "sources": [
@@ -157,7 +164,8 @@
           "transform": "Core B only (Core A has no email)",
           "rules": [
             "G-01"
-          ]
+          ],
+          "plain": "Email address. Only Riverside Bank's system stores one, so Harbor-only customers have none."
         },
         "phone": {
           "sources": [
@@ -176,7 +184,8 @@
           "rules": [
             "S-04",
             "G-01"
-          ]
+          ],
+          "plain": "Phone number reduced to ten digits so both banks' formats compare."
         },
         "city": {
           "sources": [
@@ -195,7 +204,8 @@
           "rules": [
             "S-06",
             "G-01"
-          ]
+          ],
+          "plain": "City from the customer's address, Riverside Bank's version when both have one."
         },
         "state": {
           "sources": [
@@ -214,7 +224,8 @@
           "rules": [
             "S-06",
             "G-01"
-          ]
+          ],
+          "plain": "State from the customer's address, Riverside Bank's version when both have one."
         },
         "postal_code": {
           "sources": [
@@ -233,7 +244,8 @@
           "rules": [
             "S-06",
             "G-01"
-          ]
+          ],
+          "plain": "Postal code from the customer's address."
         },
         "customer_since": {
           "sources": [
@@ -253,7 +265,8 @@
             "S-02",
             "S-03",
             "G-02"
-          ]
+          ],
+          "plain": "The earliest date either bank had a relationship with this person."
         },
         "is_active": {
           "sources": [
@@ -272,7 +285,8 @@
           "rules": [
             "S-05",
             "G-03"
-          ]
+          ],
+          "plain": "Marked active if either bank considers the customer active."
         },
         "source_systems": {
           "sources": [
@@ -290,7 +304,8 @@
           "transform": "which cores contributed",
           "rules": [
             "G-04"
-          ]
+          ],
+          "plain": "Which bank's records this person came from: Harbor, Riverside, or both."
         },
         "in_core_a": {
           "sources": [
@@ -303,7 +318,8 @@
           "transform": "present in Core A",
           "rules": [
             "G-04"
-          ]
+          ],
+          "plain": "Whether Harbor Bank's system has a record for this person."
         },
         "in_core_b": {
           "sources": [
@@ -316,7 +332,8 @@
           "transform": "present in Core B",
           "rules": [
             "G-04"
-          ]
+          ],
+          "plain": "Whether Riverside Bank's system has a record for this person."
         },
         "core_a_cif": {
           "sources": [
@@ -327,7 +344,8 @@
             }
           ],
           "transform": "pass-through",
-          "rules": []
+          "rules": [],
+          "plain": "Harbor Bank's customer number for this person, if any."
         },
         "core_b_customer_id": {
           "sources": [
@@ -338,7 +356,8 @@
             }
           ],
           "transform": "pass-through",
-          "rules": []
+          "rules": [],
+          "plain": "Riverside Bank's customer id for this person, if any."
         },
         "match_tier": {
           "sources": [
@@ -357,7 +376,8 @@
           "rules": [
             "ER-03",
             "ER-04"
-          ]
+          ],
+          "plain": "How the two banks' records were linked: 1 means an exact match on name and SSN digits, 2 means a close match scored by similarity."
         },
         "match_confidence": {
           "sources": [
@@ -376,7 +396,8 @@
           "rules": [
             "ER-03",
             "ER-04"
-          ]
+          ],
+          "plain": "How sure the matching was, from 0 to 1. Exact matches score 1."
         },
         "open_accounts": {
           "sources": [
@@ -394,7 +415,8 @@
           "transform": "count of open accounts",
           "rules": [
             "S-12"
-          ]
+          ],
+          "plain": "How many open accounts the person has across both banks."
         },
         "has_checking": {
           "sources": [
@@ -413,7 +435,8 @@
           "rules": [
             "S-10",
             "S-12"
-          ]
+          ],
+          "plain": "Has at least one open checking account."
         },
         "has_savings": {
           "sources": [
@@ -432,7 +455,8 @@
           "rules": [
             "S-10",
             "S-12"
-          ]
+          ],
+          "plain": "Has at least one open savings account."
         },
         "has_mortgage": {
           "sources": [
@@ -451,7 +475,8 @@
           "rules": [
             "S-10",
             "S-12"
-          ]
+          ],
+          "plain": "Has at least one open mortgage."
         },
         "has_cd": {
           "sources": [
@@ -470,7 +495,8 @@
           "rules": [
             "S-10",
             "S-12"
-          ]
+          ],
+          "plain": "Has at least one open certificate of deposit."
         },
         "deposit_balance": {
           "sources": [
@@ -490,7 +516,8 @@
             "S-11",
             "S-13",
             "G-05"
-          ]
+          ],
+          "plain": "Total money in open checking, savings and CD accounts, in dollars."
         },
         "loan_balance": {
           "sources": [
@@ -510,7 +537,8 @@
             "S-11",
             "S-13",
             "G-06"
-          ]
+          ],
+          "plain": "Total owed on open loans, in dollars."
         },
         "last_activity_ts": {
           "sources": [
@@ -528,7 +556,8 @@
           "transform": "max transaction time across open accounts",
           "rules": [
             "S-20"
-          ]
+          ],
+          "plain": "The most recent transaction on any of the person's open accounts."
         },
         "txn_count_90d": {
           "sources": [
@@ -546,7 +575,8 @@
           "transform": "transactions in the 90 days before as-of",
           "rules": [
             "S-20"
-          ]
+          ],
+          "plain": "Number of transactions in the 90 days before the as-of date."
         },
         "checking_last_txn_ts": {
           "sources": [
@@ -564,7 +594,8 @@
           "transform": "max transaction time on open checking accounts",
           "rules": [
             "S-20"
-          ]
+          ],
+          "plain": "The most recent transaction on any open checking account."
         },
         "checking_dormant_180d": {
           "sources": [
@@ -584,7 +615,8 @@
             "S-20",
             "G-10",
             "G-11"
-          ]
+          ],
+          "plain": "True if at least one open checking account has had no transactions for 180 days."
         }
       }
     },
@@ -607,7 +639,8 @@
           "transform": "joined through customer_xref",
           "rules": [
             "ER-07"
-          ]
+          ],
+          "plain": "Our own id for the person who holds this account."
         },
         "source_system": {
           "sources": [
@@ -623,7 +656,8 @@
             }
           ],
           "transform": "which core the account lives in",
-          "rules": []
+          "rules": [],
+          "plain": "Which bank's system the account lives in."
         },
         "source_account_id": {
           "sources": [
@@ -639,7 +673,8 @@
             }
           ],
           "transform": "pass-through",
-          "rules": []
+          "rules": [],
+          "plain": "The account number as that bank's system records it."
         },
         "source_customer_id": {
           "sources": [
@@ -655,7 +690,8 @@
             }
           ],
           "transform": "pass-through",
-          "rules": []
+          "rules": [],
+          "plain": "The customer id as that bank's system records it."
         },
         "product_type": {
           "sources": [
@@ -673,7 +709,8 @@
           "transform": "canonical taxonomy",
           "rules": [
             "S-10"
-          ]
+          ],
+          "plain": "What kind of account it is, using one shared vocabulary for both banks."
         },
         "product_category": {
           "sources": [
@@ -691,7 +728,8 @@
           "transform": "deposit / loan",
           "rules": [
             "S-13"
-          ]
+          ],
+          "plain": "Whether the account holds the customer's money (deposit) or ours (loan)."
         },
         "source_product_code": {
           "sources": [
@@ -707,7 +745,8 @@
             }
           ],
           "transform": "pass-through of the source code",
-          "rules": []
+          "rules": [],
+          "plain": "The product code exactly as that bank's system wrote it."
         },
         "opened_on": {
           "sources": [
@@ -726,7 +765,8 @@
           "rules": [
             "S-02",
             "S-03"
-          ]
+          ],
+          "plain": "The date the account was opened, converted from the bank's date format."
         },
         "balance": {
           "sources": [
@@ -744,7 +784,8 @@
           "transform": "dollars",
           "rules": [
             "S-11"
-          ]
+          ],
+          "plain": "Current balance in dollars. Harbor Bank stores cents, so those were divided by 100."
         },
         "is_open": {
           "sources": [
@@ -762,7 +803,8 @@
           "transform": "open flag",
           "rules": [
             "S-12"
-          ]
+          ],
+          "plain": "Whether the account is open today."
         },
         "last_txn_ts": {
           "sources": [
@@ -780,7 +822,8 @@
           "transform": "max transaction time",
           "rules": [
             "S-20"
-          ]
+          ],
+          "plain": "The most recent transaction on this account."
         },
         "days_since_last_txn": {
           "sources": [
@@ -798,7 +841,8 @@
           "transform": "as-of minus last transaction",
           "rules": [
             "S-20"
-          ]
+          ],
+          "plain": "Days between the last transaction and the as-of date."
         },
         "txn_count_90d": {
           "sources": [
@@ -816,7 +860,8 @@
           "transform": "count in the 90 days before as-of",
           "rules": [
             "S-20"
-          ]
+          ],
+          "plain": "Transactions in the 90 days before the as-of date."
         },
         "txn_count_180d": {
           "sources": [
@@ -834,7 +879,8 @@
           "transform": "count in the 180 days before as-of",
           "rules": [
             "S-20"
-          ]
+          ],
+          "plain": "Transactions in the 180 days before the as-of date."
         },
         "txn_count_365d": {
           "sources": [
@@ -852,7 +898,8 @@
           "transform": "count in the feed window",
           "rules": [
             "S-20"
-          ]
+          ],
+          "plain": "Transactions in the whole year of data."
         },
         "credits_365d": {
           "sources": [
@@ -870,7 +917,8 @@
           "transform": "sum of positive amounts",
           "rules": [
             "S-21"
-          ]
+          ],
+          "plain": "Money that came into the account over the year."
         },
         "debits_365d": {
           "sources": [
@@ -888,7 +936,8 @@
           "transform": "sum of negative amounts",
           "rules": [
             "S-21"
-          ]
+          ],
+          "plain": "Money that left the account over the year."
         },
         "is_dormant_180d": {
           "sources": [
@@ -908,7 +957,8 @@
             "S-12",
             "S-20",
             "G-10"
-          ]
+          ],
+          "plain": "True if the account is open but has had no transactions for 180 days."
         }
       }
     },
@@ -931,7 +981,8 @@
           "transform": "joined through account -> customer_xref",
           "rules": [
             "ER-07"
-          ]
+          ],
+          "plain": "Our own id for the person whose account this transaction belongs to."
         },
         "source_system": {
           "sources": [
@@ -947,7 +998,8 @@
             }
           ],
           "transform": "which core",
-          "rules": []
+          "rules": [],
+          "plain": "Which bank's system recorded the transaction."
         },
         "source_txn_id": {
           "sources": [
@@ -963,7 +1015,8 @@
             }
           ],
           "transform": "pass-through",
-          "rules": []
+          "rules": [],
+          "plain": "The transaction id as that bank's system recorded it."
         },
         "source_account_id": {
           "sources": [
@@ -979,7 +1032,8 @@
             }
           ],
           "transform": "pass-through",
-          "rules": []
+          "rules": [],
+          "plain": "The account number as that bank's system records it."
         },
         "txn_ts": {
           "sources": [
@@ -997,7 +1051,8 @@
           "transform": "timestamp",
           "rules": [
             "S-20"
-          ]
+          ],
+          "plain": "When the transaction happened, converted from each bank's date format."
         },
         "amount": {
           "sources": [
@@ -1015,7 +1070,8 @@
           "transform": "signed dollars",
           "rules": [
             "S-21"
-          ]
+          ],
+          "plain": "The amount in dollars. Money in is positive, money out is negative."
         },
         "memo": {
           "sources": [
@@ -1033,7 +1089,8 @@
           "transform": "title case",
           "rules": [
             "S-22"
-          ]
+          ],
+          "plain": "The description on the transaction."
         },
         "direction": {
           "sources": [
@@ -1051,7 +1108,8 @@
           "transform": "credit / debit",
           "rules": [
             "S-23"
-          ]
+          ],
+          "plain": "Whether money came in (credit) or went out (debit)."
         }
       }
     },
@@ -1074,7 +1132,8 @@
           "transform": "1 = most money at stake",
           "rules": [
             "G-20"
-          ]
+          ],
+          "plain": "Our suggested order to review these pairs: most money at stake first."
         },
         "core_a_customer_key": {
           "sources": [
@@ -1088,7 +1147,8 @@
           "rules": [
             "ER-07",
             "G-20"
-          ]
+          ],
+          "plain": "Our id for the Harbor Bank side of this possible duplicate."
         },
         "core_b_customer_key": {
           "sources": [
@@ -1102,7 +1162,8 @@
           "rules": [
             "ER-07",
             "G-20"
-          ]
+          ],
+          "plain": "Our id for the Riverside Bank side of this possible duplicate."
         },
         "core_a_cif": {
           "sources": [
@@ -1113,7 +1174,8 @@
             }
           ],
           "transform": "pass-through",
-          "rules": []
+          "rules": [],
+          "plain": "Harbor Bank's customer number for this record."
         },
         "core_b_customer_id": {
           "sources": [
@@ -1124,7 +1186,8 @@
             }
           ],
           "transform": "pass-through",
-          "rules": []
+          "rules": [],
+          "plain": "Riverside Bank's customer id for this record."
         },
         "core_a_name": {
           "sources": [
@@ -1137,7 +1200,8 @@
           "transform": "title case",
           "rules": [
             "S-01"
-          ]
+          ],
+          "plain": "The name as Harbor Bank has it."
         },
         "core_b_name": {
           "sources": [
@@ -1148,7 +1212,8 @@
             }
           ],
           "transform": "first + last",
-          "rules": []
+          "rules": [],
+          "plain": "The name as Riverside Bank has it."
         },
         "dob": {
           "sources": [
@@ -1166,7 +1231,8 @@
           "transform": "shared date of birth (blocking key)",
           "rules": [
             "ER-01"
-          ]
+          ],
+          "plain": "The date of birth both records share."
         },
         "confidence": {
           "sources": [
@@ -1185,7 +1251,8 @@
           "rules": [
             "ER-04",
             "ER-05"
-          ]
+          ],
+          "plain": "How likely the two records are the same person, from 0 to 1. Below 0.80 we ask a person instead of merging."
         },
         "name_similarity": {
           "sources": [
@@ -1205,7 +1272,8 @@
             "S-07",
             "S-08",
             "ER-04"
-          ]
+          ],
+          "plain": "How alike the two names are, from 0 to 1."
         },
         "ssn_signal": {
           "sources": [
@@ -1223,7 +1291,8 @@
           "transform": "1 equal, 0.5 missing on a side",
           "rules": [
             "ER-04"
-          ]
+          ],
+          "plain": "Whether the last four SSN digits agree (1) or are missing on one side (0.5)."
         },
         "core_b_ssn_missing": {
           "sources": [
@@ -1234,7 +1303,8 @@
             }
           ],
           "transform": "true when Core B has no SSN last-4",
-          "rules": []
+          "rules": [],
+          "plain": "True when Riverside Bank has no SSN digits on file for this record."
         },
         "phone_match": {
           "sources": [
@@ -1253,7 +1323,8 @@
           "rules": [
             "S-04",
             "ER-04"
-          ]
+          ],
+          "plain": "Whether the phone numbers agree."
         },
         "postal_code_match": {
           "sources": [
@@ -1271,7 +1342,8 @@
           "transform": "postal codes equal",
           "rules": [
             "ER-04"
-          ]
+          ],
+          "plain": "Whether the postal codes agree."
         },
         "core_a_balance": {
           "sources": [
@@ -1286,7 +1358,8 @@
             "S-11",
             "G-05",
             "G-06"
-          ]
+          ],
+          "plain": "Deposits plus loans on the Harbor Bank side."
         },
         "core_b_balance": {
           "sources": [
@@ -1300,7 +1373,8 @@
           "rules": [
             "G-05",
             "G-06"
-          ]
+          ],
+          "plain": "Deposits plus loans on the Riverside Bank side."
         },
         "combined_balance": {
           "sources": [
@@ -1318,7 +1392,8 @@
           "transform": "sum of both sides",
           "rules": [
             "G-20"
-          ]
+          ],
+          "plain": "Money across both records together."
         },
         "core_a_open_accounts": {
           "sources": [
@@ -1331,7 +1406,8 @@
           "transform": "open accounts on the Core A side",
           "rules": [
             "S-12"
-          ]
+          ],
+          "plain": "Open accounts on the Harbor Bank side."
         },
         "core_b_open_accounts": {
           "sources": [
@@ -1344,7 +1420,8 @@
           "transform": "open accounts on the Core B side",
           "rules": [
             "S-12"
-          ]
+          ],
+          "plain": "Open accounts on the Riverside Bank side."
         }
       }
     }
