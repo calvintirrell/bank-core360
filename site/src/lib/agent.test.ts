@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { fromToolResult, replayRun, toToolResult } from './agent'
+import { fromToolResult, headlineFor, replayRun, splitFollowUps, toToolResult } from './agent'
 
 describe('tool result conversions', () => {
   it('round-trips a query result through the compact tool shape', () => {
@@ -24,5 +24,20 @@ describe('tool result conversions', () => {
     expect(run.pending).toBe(true)
     expect(run.route).toBe('replay')
     expect(run.steps[0].sql).toBe('SELECT 1')
+  })
+})
+
+describe('follow-ups and headlines', () => {
+  it('splits the trailing follow-ups line and ignores text without one', () => {
+    const r = splitFollowUps('Answer here.\n\n- caveat\nFollow-ups: A? | B? | C? | D?')
+    expect(r.explanation).toBe('Answer here.\n\n- caveat')
+    expect(r.followUps).toEqual(['A?', 'B?', 'C?'])
+    expect(splitFollowUps('Just an answer.').followUps).toEqual([])
+  })
+  it('picks a big number for a one-row aggregate and bars for a short categorical result', () => {
+    expect(headlineFor({ columns: ['total'], rows: [[163]], row_count: 1 })).toEqual({ kind: 'number', label: 'total', value: 163 })
+    const bars = headlineFor({ columns: ['state', 'deposits'], rows: [['KY', 2.9], ['WV', 2.8]], row_count: 2 })
+    expect(bars?.kind).toBe('bars')
+    expect(headlineFor({ columns: ['k', 'name', 'bal'], rows: Array.from({ length: 20 }, (_, i) => [`C${i}`, 'x', i]), row_count: 20 })).toBeNull()
   })
 })

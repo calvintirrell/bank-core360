@@ -19,6 +19,7 @@ export type AgentRun = {
   usage: { input_tokens: number; output_tokens: number }
   stopReason: string | null
   pending: boolean
+  followUps: string[]
 }
 
 /** Converts a DuckDB result into the compact shape the model receives (same as pipeline/replay.py). */
@@ -77,7 +78,57 @@ export function replayRun(entry: ReplayEntry): AgentRun {
     usage: a?.usage ?? { input_tokens: 0, output_tokens: 0 },
     stopReason: null,
     pending: !a?.explanation,
+    followUps: entry.follow_ups?.length ? entry.follow_ups : (a?.follow_ups ?? []),
   }
+}
+
+/** Splits the trailing `Follow-ups: a | b | c` line the prompt asks for (same rule as pipeline/replay.py). */
+export function splitFollowUps(text: string): { explanation: string; followUps: string[] } {
+  const lines = text.trimEnd().split('\n')
+  for (let i = lines.length - 1; i >= Math.max(0, lines.length - 2); i--) {
+    const line = lines[i].trim()
+    if (/^follow-ups:/i.test(line)) {
+      const items = line
+        .slice(line.indexOf(':') + 1)
+        .split('|')
+        .map((x) => x.replace(/^[\s\-*]+|[\s\-*]+$/g, ''))
+        .filter(Boolean)
+        .slice(0, 3)
+      return { explanation: lines.slice(0, i).join('\n').trimEnd(), followUps: items }
+    }
+  }
+  return { explanation: text, followUps: [] }
+}
+
+export type Headline =
+  | { kind: 'number'; label: string; value: number }
+  | { kind: 'bars'; label: string; categoryName: string; valueName: string; bars: { category: string; value: number }[] }
+
+/** A single number or a small bar chart when the last result is a compact aggregate; otherwise null. */
+export function headlineFor(result: ToolResult | null): Headline | null {
+  if (!result || result.rows.length === 0 || result.rows.length > 12) return null
+  const cols = result.columns
+  const isNum = (i: number) => result.rows.every((r) => r[i] === null || typeof r[i] === 'number')
+  const numeric = cols.map((_, i) => i).filter((i) => isNum(i) && result.rows.some((r) => typeof r[i] === 'number'))
+  const text = cols.map((_, i) => i).filter((i) => result.rows.every((r) => typeof r[i] === 'string'))
+  if (result.rows.length === 1 && numeric.length >= 1 && cols.length <= 3) {
+    const i = numeric[0]
+    return { kind: 'number', label: cols[i], value: result.rows[0][i] as number }
+  }
+  if (result.rows.length >= 2 && text.length === 1 && numeric.length >= 1 && cols.length <= 4) {
+    const c = text[0]
+    const v = numeric.find((i) => !/^(priority|rank|tier|match_tier)$/i.test(cols[i])) ?? numeric[0]
+    const cats = result.rows.map((r) => String(r[c]))
+    if (new Set(cats).size !== cats.length) return null
+    return {
+      kind: 'bars',
+      label: `${cols[v]} by ${cols[c]}`,
+      categoryName: cols[c],
+      valueName: cols[v],
+      bars: result.rows.map((r) => ({ category: String(r[c]), value: (r[v] as number) ?? 0 })),
+    }
+  }
+  return null
 }
 
 export type AskOptions = {
@@ -102,6 +153,7 @@ export async function askLive(question: string, opts: AskOptions): Promise<Agent
     usage: { input_tokens: 0, output_tokens: 0 },
     stopReason: null,
     pending: false,
+    followUps: [],
   }
   const tools: Anthropic.Tool[] = [
     {
@@ -163,11 +215,15 @@ export async function askLive(question: string, opts: AskOptions): Promise<Agent
       run.explanation = 'The model declined to answer this question.'
       break
     }
-    run.explanation = res.content
-      .filter((b): b is Anthropic.TextBlock => b.type === 'text')
-      .map((b) => b.text)
-      .join('')
-      .trim()
+    const parsed = splitFollowUps(
+      res.content
+        .filter((b): b is Anthropic.TextBlock => b.type === 'text')
+        .map((b) => b.text)
+        .join('')
+        .trim(),
+    )
+    run.explanation = parsed.explanation
+    run.followUps = parsed.followUps
     if (res.stop_reason === 'max_tokens') run.explanation += '\n\n(Answer cut off at the demo token limit.)'
     break
   }

@@ -44,8 +44,9 @@ export type ReplayAgent = {
   usage: { input_tokens: number; output_tokens: number }
   steps: ReplayStep[]
   explanation: string | null
+  follow_ups?: string[]
 }
-export type ReplayEntry = { id: string; question: string; fingerprint: string; sql: string; result: ToolResult; agent: ReplayAgent | null }
+export type ReplayEntry = { id: string; question: string; fingerprint: string; sql: string; follow_ups?: string[]; result: ToolResult; agent: ReplayAgent | null }
 export type Replay = { schema_version: number; questions: ReplayEntry[] }
 export type AgentTool = { name: string; description: string; input_schema: Record<string, unknown>; strict: boolean }
 

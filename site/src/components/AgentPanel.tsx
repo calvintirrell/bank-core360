@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ready } from '../lib/duckdb'
 import { useBankMode } from '../lib/ModeContext'
-import { askLive, fromToolResult, replayRun, type AgentRun } from '../lib/agent'
+import { askLive, fromToolResult, headlineFor, replayRun, type AgentRun } from '../lib/agent'
+import { HeadlineView } from './Headline'
 import { DEFAULT_MODEL, DemoCapError, MODELS, PROXY_URL, fetchQuota, routeLabel, type ModelId, type Quota } from '../lib/anthropic'
 import { loadAgentPrompt, loadAgentTool, loadReplay, type AgentTool, type Replay } from '../lib/lakehouse'
 import type { Lineage } from '../lib/lineage'
@@ -179,55 +180,99 @@ export function AgentPanel({ lineage }: { lineage: Lineage | null }) {
         {error && <pre className="mt-2 whitespace-pre-wrap text-sm text-red-700">{error}</pre>}
       </Card>
 
-      {run && <Transcript run={run} lineage={lineage} apiKey={apiKey} busy={busy} />}
+      {run && <Transcript run={run} lineage={lineage} apiKey={apiKey} busy={busy} bank={bank} onAsk={(q) => { setQuestion(q); ask(q) }} />}
     </Section>
   )
 }
 
-function Transcript({ run, lineage, apiKey, busy }: { run: AgentRun; lineage: Lineage | null; apiKey: string; busy: boolean }) {
+function Transcript({ run, lineage, apiKey, busy, bank, onAsk }: { run: AgentRun; lineage: Lineage | null; apiKey: string; busy: boolean; bank: boolean; onAsk: (q: string) => void }) {
+  const [showWork, setShowWork] = useState(!bank)
+  useEffect(() => setShowWork(!bank), [bank, run.question])
   const routeText = run.route === 'replay' ? 'cached answer (replay)' : routeLabel(apiKey)
+  const last = run.steps.length ? run.steps[run.steps.length - 1] : null
+  const headline = last?.result ? headlineFor(last.result) : null
   return (
     <div className="mt-4 space-y-3">
       <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
         <div className="text-xs uppercase tracking-wide text-slate-500">Question</div>
         <div className="text-sm font-medium">{run.question}</div>
       </div>
-      {run.steps.map((s, i) => (
-        <div key={i} className="rounded-xl border border-slate-200 bg-white p-3">
-          <div className="mb-1 text-xs uppercase tracking-wide text-slate-500">
-            Step {i + 1}: ran SQL in the browser{s.result ? ` · ${s.result.row_count.toLocaleString()} row${s.result.row_count === 1 ? '' : 's'}` : ''}
-          </div>
-          <pre className="mb-2 overflow-x-auto rounded-md bg-slate-950 p-2 font-mono text-[11px] leading-snug text-slate-100">{s.sql}</pre>
-          {s.error && <pre className="whitespace-pre-wrap rounded-md bg-red-50 p-2 text-xs text-red-700">{s.error}</pre>}
-          {s.result && <ResultTable result={fromToolResult(s.result)} lineage={lineage} maxRows={25} />}
-        </div>
-      ))}
-      {busy && run.steps.length === 0 && <div className="text-sm text-slate-500">Writing the query…</div>}
-      {busy && run.steps.length > 0 && !run.explanation && <div className="text-sm text-slate-500">Reading the result…</div>}
+
+      {busy && run.explanation === null && (
+        <div className="text-sm text-slate-500">{run.steps.length === 0 ? 'Writing the query…' : 'Reading the result…'}</div>
+      )}
+
       {run.explanation !== null && (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3">
-          <div className="mb-1 text-xs uppercase tracking-wide text-emerald-800">Answer</div>
-          <Prose text={run.explanation} />
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+          <div className="mb-2 text-xs uppercase tracking-wide text-emerald-800">Answer</div>
+          {headline && <div className="mb-3"><HeadlineView h={headline} /></div>}
+          <Prose text={run.explanation} large={bank} />
         </div>
       )}
+
       {run.pending && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-          Cached answer: the SQL and result above are real, run by the pipeline. The model's written explanation for this question is generated in CI once an API key is configured there.
+          Cached answer: the query and result below are real, run by the pipeline. The written explanation for this question is generated in CI once an API key is configured there.
         </div>
       )}
+
+      {run.followUps.length > 0 && !busy && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-xs text-slate-500">Ask next:</span>
+          {run.followUps.map((q) => (
+            <button key={q} type="button" onClick={() => onAsk(q)} className="rounded-full border border-slate-300 bg-white px-3 py-1 text-left text-xs hover:bg-slate-100">
+              {q}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {run.steps.length > 0 && (
+        <div className="rounded-xl border border-slate-200 bg-white">
+          <button type="button" onClick={() => setShowWork((v) => !v)} aria-expanded={showWork} className="flex w-full items-center justify-between px-3 py-2 text-left text-sm">
+            <span className="font-medium">{showWork ? 'How this was worked out' : 'Show how this was worked out'}</span>
+            <span className="text-xs text-slate-500">
+              {run.steps.length} quer{run.steps.length === 1 ? 'y' : 'ies'}{last?.result ? ` · ${last.result.row_count.toLocaleString()} row${last.result.row_count === 1 ? '' : 's'}` : ''} · {showWork ? 'hide' : 'show'}
+            </span>
+          </button>
+          {showWork && (
+            <div className="space-y-3 border-t border-slate-100 p-3">
+              {run.steps.map((s, i) => (
+                <div key={i}>
+                  <div className="mb-1 text-xs uppercase tracking-wide text-slate-500">
+                    Step {i + 1}: ran SQL in the browser{s.result ? ` · ${s.result.row_count.toLocaleString()} row${s.result.row_count === 1 ? '' : 's'}` : ''}
+                  </div>
+                  <pre className="mb-2 overflow-x-auto rounded-md bg-slate-950 p-2 font-mono text-[11px] leading-snug text-slate-100">{s.sql}</pre>
+                  {s.error && <pre className="whitespace-pre-wrap rounded-md bg-red-50 p-2 text-xs text-red-700">{s.error}</pre>}
+                  {s.result && <ResultTable result={fromToolResult(s.result)} lineage={lineage} maxRows={25} />}
+                </div>
+              ))}
+              {bank && (
+                <p className="text-xs text-slate-500">
+                  Badges on each column say which bank the value came from: <b>A</b> Harbor Bank's system, <b>B</b> Riverside Bank's system, <b>A+B</b> both. Click one to see the exact field and the rule applied.
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="text-xs text-slate-500">
-        {run.model ? `${run.model} via ${routeText}` : routeText}
-        {run.calls > 0 && ` · ${run.calls} API call${run.calls === 1 ? '' : 's'} · ${run.usage.input_tokens.toLocaleString()} in / ${run.usage.output_tokens.toLocaleString()} out tokens`}
+        {bank
+          ? run.route === 'replay'
+            ? 'Cached answer, generated earlier by the same assistant.'
+            : 'Answered by Claude just now, using only the tables on this page.'
+          : `${run.model ? `${run.model} via ${routeText}` : routeText}${run.calls > 0 ? ` · ${run.calls} API call${run.calls === 1 ? '' : 's'} · ${run.usage.input_tokens.toLocaleString()} in / ${run.usage.output_tokens.toLocaleString()} out tokens` : ''}`}
       </div>
     </div>
   )
 }
 
 /** Minimal rendering for the model's short answer: paragraphs, "- " bullets, **bold** and `code`. */
-function Prose({ text }: { text: string }) {
+function Prose({ text, large }: { text: string; large?: boolean }) {
   const blocks = text.split(/\n{2,}/)
   return (
-    <div className="space-y-2 text-sm text-slate-800">
+    <div className={`space-y-2 text-slate-800 ${large ? 'text-base leading-relaxed' : 'text-sm'}`}>
       {blocks.map((b, i) => {
         const lines = b.split('\n').filter((l) => l.trim() !== '')
         if (lines.length > 1 && lines.every((l) => /^\s*\|.*\|\s*$/.test(l))) {

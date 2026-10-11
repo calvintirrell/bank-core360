@@ -167,11 +167,11 @@ LINEAGE = {
     "as_of": AS_OF.isoformat(),
     "systems": {
         A: {
-            "label": "Core A (legacy in-house core)",
+            "label": "Core A: Harbor Bank (legacy in-house core)",
             "conventions": "CIF numbers, YYYYMMDD dates, product codes DDA/SAV/MTG/CDA, balances in integer cents, pipe-delimited extracts, upper-case names",
         },
         B: {
-            "label": "Core B (acquired bank's core)",
+            "label": "Core B: Riverside Bank (acquired bank's core)",
             "conventions": "UUID ids, ISO-8601 dates, product_type strings, dollar balances, JSON lines with nested address",
         },
     },

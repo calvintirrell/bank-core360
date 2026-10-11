@@ -120,6 +120,13 @@ def build_prompt() -> str:
         "   The user already sees the full result table next to your answer, so never repeat rows as a markdown table or a long list; name at most three examples inline.",
         "4. If the question cannot be answered from these tables, say so and suggest the closest question you can answer.",
         "5. Be concrete and brief. No preamble.",
+        "6. End with one final line exactly in the form `Follow-ups: <question> | <question> | <question>` with two or three short, natural next questions the same person might ask. Nothing after that line.",
+        "",
+        (
+            "Names: in the story shown to users, Core A is Harbor Bank (the legacy, acquiring bank) and Core B is Riverside Bank "
+            "(the acquired bank). Users may say Harbor, Riverside, 'the acquired bank' or 'the legacy system'. In answers, say "
+            "Harbor Bank or Riverside Bank and give the core id once in parentheses, for example 'Riverside Bank (Core B)'."
+        ),
         "",
         f"As-of date for all recency and dormancy rules: {AS_OF.isoformat()}. 'Dormant' means an open account with no transactions in the {DORMANT_DAYS} days before as-of (rule G-10).",
         "'6 months' or 'half a year' of inactivity maps to checking_dormant_180d / is_dormant_180d. The transactions feed covers the 365 days before as-of; nothing older exists.",
