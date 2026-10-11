@@ -4,7 +4,15 @@ Two mismatched banking cores, one governed customer-360 lakehouse, queryable in 
 
 **Live demo:** https://calvintirrell.github.io/bank-core360/
 
-![Asking a question in plain English: the agent writes SQL, runs it in the browser, and explains the result with lineage on every column](docs/demo.gif)
+![Bank mode: the scenario, a question asked in plain English, the answer with the evidence folded away, the customers as people, and the matching decisions](docs/demo.gif)
+
+## If you are not technical, start here
+
+Harbor Bank has just acquired Riverside Bank. Each ran its own core banking system, and the two disagree about almost everything: who the customers are, what an account is called, even how a date is written. The page is the first week after the deal, with both systems brought together and every customer resolved to one person.
+
+You can ask a question in plain English and get the answer in a sentence, see every customer as one person rather than two records, and see which possible duplicates the matching held back for a human to check and why. Nothing to install and no SQL to read. Press **Show me around** in the header for a 60-second walk through the five things on the page, and hover any underlined term for a one-line definition in bank language.
+
+The page has two views. **I run the bank** is the default and hides the plumbing. **I build the data** shows everything: the queries behind each answer, the raw files as received, the matching rules with their ids, and the architecture. Add `?mode=tech` or `?mode=bank` to the link to send someone straight to one view.
 
 ## Who this is for
 
@@ -26,11 +34,12 @@ This demo is the first release I would ship for them, built end to end so the tr
 
 ## What you can do on the page
 
-- Ask a question, first thing on the page. Seven are cached and always work. Live questions run through a small shared proxy with a daily cap, or through your own Anthropic key by adding `?byok` to the URL.
-- Page and filter the customer-360 table the answers come from. Click a customer to see their accounts across both cores.
-- Read the entity-resolution scorecard: tiers, precision and recall, and the outcome for each designed difficulty.
+- Ask a question, first thing on the page, in a banker's words. Seven are cached and always work. Live questions run through a small shared proxy with a daily cap, or through your own Anthropic key by adding `?byok` to the URL. Answers lead with a sentence and a headline figure; the query and rows fold under "Show how this was worked out," and each answer suggests what to ask next.
+- See the customers as people, one card each, with what they hold in words. In the technical view the same list is a filterable table. Click a person to see their accounts at each bank.
+- Read the matching as decisions: how many were merged automatically, how many were held for a person, how many wrong merges against the answer key, with a worked example from the review queue. The technical view keeps the full scorecard.
 - Run your own SQL in the console. DuckDB-WASM executes it in your browser against the gold Parquet. Nothing leaves the page.
-- Browse the two raw feeds side by side, exactly as landed, and the architecture that turns them into one table.
+- See what the bank handed over as six side-by-side mismatches from real rows, or open the raw files themselves, and the architecture that turns them into one table.
+- Open "Why this matters" under any section for the product view: the problem, the decision it supports, and one trade-off.
 
 ## How it works
 
