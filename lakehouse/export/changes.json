@@ -1,0 +1,18 @@
+{
+ "from_as_of": "2026-09-30",
+ "to_as_of": "2026-10-31",
+ "customers_before": 2035,
+ "customers_after": 2070,
+ "new_customers": 40,
+ "customers_merged_by_reviewer": 5,
+ "pairs_rejected_by_reviewer": 2,
+ "review_queue_before": 27,
+ "review_queue_after": 20,
+ "address_changes": 15,
+ "accounts_went_quiet": 110,
+ "accounts_woke_up": 59,
+ "new_accounts": 94,
+ "transactions_in_new_month": 4167,
+ "deposits_before": 116009530.27,
+ "deposits_after": 118077003.2
+}

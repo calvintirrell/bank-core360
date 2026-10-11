@@ -1,5 +1,5 @@
 {
- "as_of": "2026-09-30",
+ "as_of": "2026-10-31",
  "passed": true,
  "checks": [
   {
@@ -8,8 +8,8 @@
    "plain": "Every balance on this page, added together, equals the two banks' files to the cent.",
    "sql": "SELECT round((SELECT sum(CAST(CUR_BAL_CENTS AS BIGINT)) / 100.0 FROM raw_a_accounts) + (SELECT sum(balance) FROM raw_b_accounts), 2) AS raw_total,\n                    round((SELECT sum(balance) FROM account_360), 2) AS gold_total",
    "value": {
-    "raw_total": 430387039.69,
-    "gold_total": 430387039.69,
+    "raw_total": 442598890.61,
+    "gold_total": 442598890.61,
     "difference": 0.0
    },
    "expected": "difference < 0.01",
@@ -62,7 +62,7 @@
   {
    "id": "Q-06",
    "title": "The matching made no wrong merges",
-   "plain": "Checked against the answer key: 265 merges, 0 wrong, 0 of the same-name traps fooled it.",
+   "plain": "Checked against the answer key: 270 merges, 0 wrong, 0 of the same-name traps fooled it.",
    "sql": null,
    "value": {
     "precision": 1.0,
@@ -76,8 +76,8 @@
   {
    "id": "Q-07",
    "title": "Transactions fall inside the year of data",
-   "plain": "All transactions are dated within the 365 days before the as-of date, 2026-09-30.",
-   "sql": "SELECT count(*), min(txn_ts), max(txn_ts) FROM transactions WHERE txn_ts < TIMESTAMP '2026-09-30' - INTERVAL 365 DAY OR txn_ts > TIMESTAMP '2026-09-30' + INTERVAL 1 DAY",
+   "plain": "All transactions are dated within the 365 days before the as-of date, 2026-10-31.",
+   "sql": "SELECT count(*), min(txn_ts), max(txn_ts) FROM transactions WHERE txn_ts < TIMESTAMP '2026-10-31' - INTERVAL 365 DAY OR txn_ts > TIMESTAMP '2026-10-31' + INTERVAL 1 DAY",
    "value": 0,
    "expected": 0,
    "passed": true,

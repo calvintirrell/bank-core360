@@ -156,7 +156,7 @@ def transactions() -> pl.DataFrame:
     return df.sort(["source_system", "source_txn_id"])
 
 
-def run() -> dict[str, int]:
+def run(fresh: bool = True) -> dict[str, int]:
     out = {}
     for name, fn, desc in [
         ("customers", customers, "Standardized customers from both cores (one row per source record)"),
@@ -164,6 +164,6 @@ def run() -> dict[str, int]:
         ("transactions", transactions, "Standardized, signed transactions"),
     ]:
         df = fn()
-        write_table(df, SILVER, name, desc)
+        write_table(df, SILVER, name, desc, fresh=fresh)
         out[name] = df.height
     return out

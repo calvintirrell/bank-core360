@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { dataUrl } from '../lib/duckdb'
 import { useBankMode } from '../lib/ModeContext'
+import { useAsOf, versionDir } from '../lib/AsOfContext'
 import { Section } from './Section'
 import { WhyItMatters } from './WhyItMatters'
 
@@ -12,14 +13,15 @@ const fmt = (v: unknown) => (typeof v === 'object' && v !== null ? JSON.stringif
 /** The data-quality checks the pipeline ran on this build. Bank mode: sentences; tech mode: SQL and values. */
 export function QualityPanel() {
   const bank = useBankMode()
+  const { version } = useAsOf()
   const [q, setQ] = useState<Quality | null>(null)
   const [openId, setOpenId] = useState<string | null>(null)
   useEffect(() => {
-    fetch(dataUrl('quality.json'))
+    fetch(dataUrl('quality.json', versionDir(version)))
       .then((r) => (r.ok ? r.json() : null))
       .then(setQ)
       .catch(() => setQ(null))
-  }, [])
+  }, [version])
   if (!q) return null
   const passed = q.checks.filter((c) => c.passed).length
   return (

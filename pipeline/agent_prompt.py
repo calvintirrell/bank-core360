@@ -3,7 +3,7 @@ model sees is exactly the schema that ships. Used by the browser (live) and by r
 
 from __future__ import annotations
 
-from pipeline import AS_OF, DORMANT_DAYS, EXPORT
+from pipeline import DORMANT_DAYS, get_as_of, version_dir
 from pipeline.lineage import LINEAGE
 
 TOOL_NAME = "run_sql"
@@ -37,7 +37,7 @@ COLUMN_TYPES = {
         "in_core_b": "boolean",
         "core_a_cif": "text",
         "core_b_customer_id": "text",
-        "match_tier": "integer (1 deterministic, 2 fuzzy, null single-core)",
+        "match_tier": "integer (1 deterministic, 2 fuzzy, 3 confirmed by a reviewer, null single-core)",
         "match_confidence": "double 0-1",
         "open_accounts": "integer",
         "has_checking": "boolean",
@@ -128,7 +128,7 @@ def build_prompt() -> str:
             "Harbor Bank or Riverside Bank and give the core id once in parentheses, for example 'Riverside Bank (Core B)'."
         ),
         "",
-        f"As-of date for all recency and dormancy rules: {AS_OF.isoformat()}. 'Dormant' means an open account with no transactions in the {DORMANT_DAYS} days before as-of (rule G-10).",
+        f"As-of date for all recency and dormancy rules: {get_as_of().isoformat()}. 'Dormant' means an open account with no transactions in the {DORMANT_DAYS} days before as-of (rule G-10).",
         "'6 months' or 'half a year' of inactivity maps to checking_dormant_180d / is_dormant_180d. The transactions feed covers the 365 days before as-of; nothing older exists.",
         "",
         "Tables (DuckDB SQL). customer_360 / account_360 / transactions are the resolved data; review_queue lists cross-core candidate pairs that were NOT merged (ER-05) and still appear as two separate customer_360 rows.",
@@ -143,7 +143,7 @@ def build_prompt() -> str:
         "",
         "Rules referenced by lineage (cite by id when relevant):",
     ]
-    for rid in ("ER-03", "ER-04", "ER-05", "G-01", "G-02", "G-05", "G-06", "G-10", "G-11", "G-20", "S-10", "S-11"):
+    for rid in ("ER-03", "ER-04", "ER-05", "ER-08", "G-01", "G-02", "G-05", "G-06", "G-10", "G-11", "G-20", "S-10", "S-11"):
         lines.append(f"  {rid}: {LINEAGE['rules'][rid]}")
     lines += [
         "",
@@ -160,7 +160,8 @@ def build_prompt() -> str:
 def write() -> None:
     import json
 
-    EXPORT.mkdir(parents=True, exist_ok=True)
-    (EXPORT / "agent_prompt.md").write_text(build_prompt())
+    out = version_dir()
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "agent_prompt.md").write_text(build_prompt())
     tool = {"name": TOOL_NAME, "description": TOOL_DESCRIPTION, "input_schema": TOOL_SCHEMA, "strict": True}
-    (EXPORT / "agent_tool.json").write_text(json.dumps(tool, indent=1) + "\n")
+    (out / "agent_tool.json").write_text(json.dumps(tool, indent=1) + "\n")

@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import polars as pl
 
-from pipeline import AS_OF, BRONZE, RAW
+from pipeline import BRONZE, get_as_of, raw_dir
 from pipeline.delta import write_table
 
 FEEDS = {
@@ -19,7 +19,7 @@ FEEDS = {
 
 
 def land(system: str, filename: str) -> pl.DataFrame:
-    path = RAW / system / filename
+    path = raw_dir() / system / filename
     if filename.endswith(".psv"):
         df = pl.read_csv(path, separator="|", infer_schema=False)
     else:
@@ -27,15 +27,15 @@ def land(system: str, filename: str) -> pl.DataFrame:
     return df.with_columns(
         pl.lit(system).alias("_source_system"),
         pl.lit(f"{system}/{filename}").alias("_source_file"),
-        pl.lit(AS_OF.isoformat()).alias("_ingest_batch"),
+        pl.lit(get_as_of().isoformat()).alias("_ingest_batch"),
         pl.int_range(pl.len()).alias("_source_row"),
     )
 
 
-def run() -> dict[str, int]:
+def run(fresh: bool = True) -> dict[str, int]:
     counts = {}
     for name, (system, filename) in FEEDS.items():
         df = land(system, filename)
-        write_table(df, BRONZE, name, f"Raw landing of {system}/{filename}, untouched")
+        write_table(df, BRONZE, name, f"Raw landing of {system}/{filename}, untouched", fresh=fresh)
         counts[name] = df.height
     return counts

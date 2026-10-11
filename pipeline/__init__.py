@@ -21,5 +21,30 @@ EXPORT = LAKEHOUSE / "export"
 TRUTH = ROOT / "data" / "truth"
 
 SEED = 360
-AS_OF = date(2026, 9, 30)  # business "as of" date for dormancy and recency rules
 DORMANT_DAYS = 180
+
+# Two batches: the initial load and a second month. Each batch is a Delta version of every table.
+BATCHES: list[date] = [date(2026, 9, 30), date(2026, 10, 31)]
+AS_OF = BATCHES[-1]  # the current as-of (latest batch)
+_as_of = BATCHES[0]
+
+
+def get_as_of() -> date:
+    """The as-of date of the batch currently being processed (set by the orchestrator)."""
+    return _as_of
+
+
+def set_as_of(d: date) -> None:
+    global _as_of
+    _as_of = d
+
+
+def raw_dir(as_of: date | None = None) -> Path:
+    return RAW / (as_of or get_as_of()).isoformat()
+
+
+def version_dir(as_of: date | None = None) -> Path:
+    """Export directory for a batch: the latest batch exports to EXPORT itself, earlier ones to EXPORT/v<i>."""
+    d = as_of or get_as_of()
+    i = BATCHES.index(d)
+    return EXPORT if i == len(BATCHES) - 1 else EXPORT / f"v{i}"

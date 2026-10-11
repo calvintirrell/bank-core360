@@ -8,19 +8,23 @@ Tier 2:     confidence = 0.40*name_similarity + 0.30*ssn + 0.15*phone + 0.15*pos
             where ssn = 1 if equal, 0.5 if missing on either side; auto-merge at >= 0.80 (ER-04).
 Review:     0.55 <= confidence < 0.80 -> not merged, listed in the review queue (ER-05).
 One-to-one: greedy assignment by confidence, each source record merges at most once (ER-06).
-Keys:       customer_key = stable surrogate; Core A order first, then unmatched Core B (ER-07).
+Keys:       customer_key = stable surrogate hashed from the source id; a merged pair takes the Core A key (ER-07).
+Decisions:  data/decisions/review_decisions.csv holds human decisions on queued pairs; a confirmed
+            pair merges as tier 3 (confidence 1.0) and a rejected pair can never merge (ER-08).
+            Only decisions dated on or before the batch's as-of date apply.
 """
 
 from __future__ import annotations
 
 import csv
+import hashlib
 import json
 from dataclasses import dataclass
 
 import polars as pl
 from rapidfuzz import fuzz
 
-from pipeline import EXPORT, SILVER, TRUTH
+from pipeline import ROOT, SILVER, TRUTH, get_as_of, version_dir
 from pipeline.delta import read_table, write_table
 
 AUTO_MERGE = 0.80
@@ -64,8 +68,34 @@ def score_pairs(cust: pl.DataFrame) -> list[Candidate]:
     return out
 
 
+def load_decisions() -> dict[tuple[str, str], str]:
+    """ER-08: reviewer decisions that apply as of the current batch: {(a_id, b_id): 'confirm'|'reject'}."""
+    path = ROOT / "data" / "decisions" / "review_decisions.csv"
+    if not path.exists():
+        return {}
+    out: dict[tuple[str, str], str] = {}
+    with path.open() as f:
+        for r in csv.DictReader(f):
+            if r["decided_on"] <= get_as_of().isoformat():
+                out[(r["core_a_cif"], r["core_b_customer_id"])] = r["decision"]
+    return out
+
+
+def stable_key(system: str, source_id: str) -> str:
+    """C + 7 digits from a hash of the source id (ER-07). Uniqueness is enforced by the quality checks."""
+    digest = hashlib.sha1(f"{system}:{source_id}".encode()).hexdigest()
+    return f"C{int(digest[:10], 16) % 10_000_000:07d}"
+
+
 def resolve(cust: pl.DataFrame) -> tuple[pl.DataFrame, pl.DataFrame, dict]:
+    decisions = load_decisions()
     candidates = score_pairs(cust)
+    # ER-08: apply reviewer decisions before the greedy pass
+    for c in candidates:
+        d = decisions.get((c.a_id, c.b_id))
+        if d == "confirm":
+            c.tier, c.confidence = 3, 1.0
+    candidates = [c for c in candidates if decisions.get((c.a_id, c.b_id)) != "reject"]
     candidates.sort(key=lambda c: (-c.confidence, c.a_id, c.b_id))
     used_a: set[str] = set()
     used_b: set[str] = set()
@@ -81,10 +111,11 @@ def resolve(cust: pl.DataFrame) -> tuple[pl.DataFrame, pl.DataFrame, dict]:
         used_b.add(c.b_id)
         merged[c.b_id] = c
 
-    # ER-07 stable surrogate keys
+    # ER-07 stable surrogate keys: derived from the source id, so a customer keeps the same key
+    # across batches whatever else is added, merged or removed. Merged pairs take the Core A key.
     a_ids = sorted(cust.filter(pl.col("source_system") == "core_a")["source_customer_id"].to_list())
     b_ids = sorted(cust.filter(pl.col("source_system") == "core_b")["source_customer_id"].to_list())
-    key_of_a = {a_id: f"C{i + 1:06d}" for i, a_id in enumerate(a_ids)}
+    key_of_a = {a_id: stable_key("core_a", a_id) for a_id in a_ids}
     rows = [
         {
             "source_system": "core_a",
@@ -96,7 +127,6 @@ def resolve(cust: pl.DataFrame) -> tuple[pl.DataFrame, pl.DataFrame, dict]:
         }
         for a_id in a_ids
     ]
-    next_i = len(a_ids)
     for b_id in b_ids:
         if b_id in merged:
             c = merged[b_id]
@@ -111,12 +141,11 @@ def resolve(cust: pl.DataFrame) -> tuple[pl.DataFrame, pl.DataFrame, dict]:
                 }
             )
         else:
-            next_i += 1
             rows.append(
                 {
                     "source_system": "core_b",
                     "source_customer_id": b_id,
-                    "customer_key": f"C{next_i:06d}",
+                    "customer_key": stable_key("core_b", b_id),
                     "match_tier": None,
                     "match_confidence": None,
                     "matched_with": None,
@@ -164,6 +193,9 @@ def resolve(cust: pl.DataFrame) -> tuple[pl.DataFrame, pl.DataFrame, dict]:
     )
     report = score_against_truth(merged, review)
     report["candidates_scored"] = len(candidates)
+    report["confirmed_by_reviewer"] = sum(1 for c in merged.values() if c.tier == 3)
+    report["rejected_by_reviewer"] = sum(1 for d in decisions.values() if d == "reject")
+    report["as_of"] = get_as_of().isoformat()
     return xref, review_df, report
 
 
@@ -172,13 +204,14 @@ def score_against_truth(merged: dict[str, Candidate], review: list[Candidate]) -
     synthetic; in production this is a sampled manual audit)."""
     truth_path = TRUTH / "overlap.csv"
     merged_pairs = {(c.a_id, c.b_id) for c in merged.values()}
-    tiers = {1: 0, 2: 0}
+    tiers = {1: 0, 2: 0, 3: 0}
     for c in merged.values():
         tiers[c.tier or 0] += 1
     report: dict = {
         "auto_merged": len(merged_pairs),
         "tier_1_deterministic": tiers[1],
         "tier_2_fuzzy": tiers[2],
+        "tier_3_confirmed": tiers[3],
         "review_queue": len(review),
         "thresholds": {"auto_merge": AUTO_MERGE, "review_floor": REVIEW_FLOOR},
         "weights": {"name": W_NAME, "ssn": W_SSN, "phone": W_PHONE, "postal_code": W_ZIP},
@@ -218,6 +251,7 @@ def run() -> dict:
     xref, review_df, report = resolve(cust)
     write_table(xref, SILVER, "customer_xref", "Source customer -> resolved customer_key with match tier and confidence")
     write_table(review_df, SILVER, "match_review_queue", "Cross-core candidate pairs below auto-merge threshold, for human review")
-    EXPORT.mkdir(parents=True, exist_ok=True)
-    (EXPORT / "match_report.json").write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
+    out = version_dir()
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "match_report.json").write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
     return report

@@ -1,0 +1,1430 @@
+{
+  "as_of": "2026-09-30",
+  "systems": {
+    "core_a": {
+      "plain": "Harbor Bank's system",
+      "label": "Core A: Harbor Bank (legacy in-house core)",
+      "conventions": "CIF numbers, YYYYMMDD dates, product codes DDA/SAV/MTG/CDA, balances in integer cents, pipe-delimited extracts, upper-case names"
+    },
+    "core_b": {
+      "plain": "Riverside Bank's system",
+      "label": "Core B: Riverside Bank (acquired bank's core)",
+      "conventions": "UUID ids, ISO-8601 dates, product_type strings, dollar balances, JSON lines with nested address"
+    }
+  },
+  "rules": {
+    "S-01": "Core A CUST_NAME 'LAST, FIRST M' split into last / first / middle initial",
+    "S-02": "Core A dates YYYYMMDD parsed to ISO date",
+    "S-03": "Core B ISO-8601 dates / timestamps parsed; timestamps truncated to date where noted",
+    "S-04": "Phone reduced to 10 digits (Core A already digits; Core B '(xxx) xxx-xxxx' stripped)",
+    "S-05": "Core A CUST_STAT 'A' -> is_active true, else false",
+    "S-06": "Core B nested address object flattened",
+    "S-07": "Nickname canonicalization for matching only (Bill->William, Liz->Elizabeth, ...)",
+    "S-08": "Name key = lowercase 'first last', hyphens to spaces; used for matching, not display",
+    "S-10": "Product taxonomy: A DDA/SAV/MTG/CDA and B checking/savings/mortgage/certificate_of_deposit -> checking/savings/mortgage/cd",
+    "S-11": "Core A CUR_BAL_CENTS integer cents / 100 -> dollars",
+    "S-12": "Open flag: A ACCT_STAT 'O', B status 'open'",
+    "S-13": "Product category: checking/savings/cd -> deposit, mortgage -> loan",
+    "S-20": "Transaction time: A MM/DD/YYYY (date only, midnight), B ISO timestamp",
+    "S-21": "Core A AMT + DR_CR -> signed amount (credit positive, debit negative); B already signed",
+    "S-22": "Core A DESC upper-case memo title-cased",
+    "S-23": "direction = credit if amount >= 0 else debit",
+    "ER-01": "Blocking: candidate pairs must share date of birth",
+    "ER-02": "Hard reject when both cores have SSN last-4 and they differ",
+    "ER-03": "Tier 1 deterministic: equal name key and equal SSN last-4 -> confidence 1.00",
+    "ER-04": "Tier 2 fuzzy: 0.40*name similarity (token-set ratio) + 0.30*ssn (1 equal / 0.5 missing) + 0.15*phone + 0.15*postal code; auto-merge >= 0.80",
+    "ER-05": "Review queue: 0.55 <= confidence < 0.80, not merged",
+    "ER-06": "Greedy one-to-one assignment by descending confidence",
+    "ER-07": "customer_key surrogate: C + 7 digits hashed from the source id, stable across batches; a merged pair takes the Core A key",
+    "ER-08": "Reviewer decisions: a confirmed pair merges as tier 3 (confidence 1.0); a rejected pair never merges; only decisions dated on or before the batch as-of apply",
+    "G-01": "Survivorship: contact/name fields prefer Core B (newer system) when present in both",
+    "G-02": "customer_since = earliest relationship date across cores",
+    "G-03": "is_active = active in any core",
+    "G-04": "source_systems = which cores contributed to this customer",
+    "G-05": "deposit_balance = sum of open deposit-category balances",
+    "G-06": "loan_balance = sum of open loan-category balances",
+    "G-10": "is_dormant_180d = open account with zero transactions in the 180 days before the as-of date",
+    "G-11": "checking_dormant_180d = any open checking account dormant per G-10",
+    "G-20": "review_queue = candidate pairs scored 0.55-0.80 (ER-05), not merged; each side remains its own customer_360 row; priority = rank by combined balance"
+  },
+  "tables": {
+    "customer_360": {
+      "grain": "one row per resolved customer",
+      "columns": {
+        "customer_key": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "CUSTMAST.psv",
+              "field": "CIF_NO"
+            },
+            {
+              "system": "core_b",
+              "table": "customers.jsonl",
+              "field": "customer_id"
+            }
+          ],
+          "transform": "entity resolution -> stable surrogate key",
+          "rules": [
+            "ER-01",
+            "ER-03",
+            "ER-04",
+            "ER-06",
+            "ER-07"
+          ],
+          "plain": "Our own id for one real person, assigned after the two banks' records were matched."
+        },
+        "full_name": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "CUSTMAST.psv",
+              "field": "CUST_NAME"
+            },
+            {
+              "system": "core_b",
+              "table": "customers.jsonl",
+              "field": "first_name,last_name"
+            }
+          ],
+          "transform": "first + last, Core B preferred",
+          "rules": [
+            "S-01",
+            "G-01"
+          ],
+          "plain": "The person's name. If they were in both banks, Riverside Bank's spelling is shown."
+        },
+        "first_name": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "CUSTMAST.psv",
+              "field": "CUST_NAME"
+            },
+            {
+              "system": "core_b",
+              "table": "customers.jsonl",
+              "field": "first_name"
+            }
+          ],
+          "transform": "title case, Core B preferred",
+          "rules": [
+            "S-01",
+            "G-01"
+          ],
+          "plain": "First name, Riverside Bank's version when both banks have one."
+        },
+        "last_name": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "CUSTMAST.psv",
+              "field": "CUST_NAME"
+            },
+            {
+              "system": "core_b",
+              "table": "customers.jsonl",
+              "field": "last_name"
+            }
+          ],
+          "transform": "title case, Core B preferred",
+          "rules": [
+            "S-01",
+            "G-01"
+          ],
+          "plain": "Last name, Riverside Bank's version when both banks have one."
+        },
+        "dob": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "CUSTMAST.psv",
+              "field": "DOB"
+            },
+            {
+              "system": "core_b",
+              "table": "customers.jsonl",
+              "field": "date_of_birth"
+            }
+          ],
+          "transform": "parsed to date",
+          "rules": [
+            "S-02",
+            "S-03"
+          ],
+          "plain": "Date of birth, converted from each bank's own date format."
+        },
+        "email": {
+          "sources": [
+            {
+              "system": "core_b",
+              "table": "customers.jsonl",
+              "field": "email"
+            }
+          ],
+          "transform": "Core B only (Core A has no email)",
+          "rules": [
+            "G-01"
+          ],
+          "plain": "Email address. Only Riverside Bank's system stores one, so Harbor-only customers have none."
+        },
+        "phone": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "CUSTMAST.psv",
+              "field": "PHONE"
+            },
+            {
+              "system": "core_b",
+              "table": "customers.jsonl",
+              "field": "phone"
+            }
+          ],
+          "transform": "10 digits, Core B preferred",
+          "rules": [
+            "S-04",
+            "G-01"
+          ],
+          "plain": "Phone number reduced to ten digits so both banks' formats compare."
+        },
+        "city": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "CUSTMAST.psv",
+              "field": "CITY"
+            },
+            {
+              "system": "core_b",
+              "table": "customers.jsonl",
+              "field": "address.city"
+            }
+          ],
+          "transform": "title case, Core B preferred",
+          "rules": [
+            "S-06",
+            "G-01"
+          ],
+          "plain": "City from the customer's address, Riverside Bank's version when both have one."
+        },
+        "state": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "CUSTMAST.psv",
+              "field": "ST"
+            },
+            {
+              "system": "core_b",
+              "table": "customers.jsonl",
+              "field": "address.state"
+            }
+          ],
+          "transform": "Core B preferred",
+          "rules": [
+            "S-06",
+            "G-01"
+          ],
+          "plain": "State from the customer's address, Riverside Bank's version when both have one."
+        },
+        "postal_code": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "CUSTMAST.psv",
+              "field": "ZIP"
+            },
+            {
+              "system": "core_b",
+              "table": "customers.jsonl",
+              "field": "address.postal_code"
+            }
+          ],
+          "transform": "Core B preferred",
+          "rules": [
+            "S-06",
+            "G-01"
+          ],
+          "plain": "Postal code from the customer's address."
+        },
+        "customer_since": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "CUSTMAST.psv",
+              "field": "OPEN_DT"
+            },
+            {
+              "system": "core_b",
+              "table": "customers.jsonl",
+              "field": "created_at"
+            }
+          ],
+          "transform": "earliest across cores",
+          "rules": [
+            "S-02",
+            "S-03",
+            "G-02"
+          ],
+          "plain": "The earliest date either bank had a relationship with this person."
+        },
+        "is_active": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "CUSTMAST.psv",
+              "field": "CUST_STAT"
+            },
+            {
+              "system": "core_b",
+              "table": "customers.jsonl",
+              "field": "is_active"
+            }
+          ],
+          "transform": "active in any core",
+          "rules": [
+            "S-05",
+            "G-03"
+          ],
+          "plain": "Marked active if either bank considers the customer active."
+        },
+        "source_systems": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "CUSTMAST.psv",
+              "field": "CIF_NO"
+            },
+            {
+              "system": "core_b",
+              "table": "customers.jsonl",
+              "field": "customer_id"
+            }
+          ],
+          "transform": "which cores contributed",
+          "rules": [
+            "G-04"
+          ],
+          "plain": "Which bank's records this person came from: Harbor, Riverside, or both."
+        },
+        "in_core_a": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "CUSTMAST.psv",
+              "field": "CIF_NO"
+            }
+          ],
+          "transform": "present in Core A",
+          "rules": [
+            "G-04"
+          ],
+          "plain": "Whether Harbor Bank's system has a record for this person."
+        },
+        "in_core_b": {
+          "sources": [
+            {
+              "system": "core_b",
+              "table": "customers.jsonl",
+              "field": "customer_id"
+            }
+          ],
+          "transform": "present in Core B",
+          "rules": [
+            "G-04"
+          ],
+          "plain": "Whether Riverside Bank's system has a record for this person."
+        },
+        "core_a_cif": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "CUSTMAST.psv",
+              "field": "CIF_NO"
+            }
+          ],
+          "transform": "pass-through",
+          "rules": [],
+          "plain": "Harbor Bank's customer number for this person, if any."
+        },
+        "core_b_customer_id": {
+          "sources": [
+            {
+              "system": "core_b",
+              "table": "customers.jsonl",
+              "field": "customer_id"
+            }
+          ],
+          "transform": "pass-through",
+          "rules": [],
+          "plain": "Riverside Bank's customer id for this person, if any."
+        },
+        "match_tier": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "CUSTMAST.psv",
+              "field": "CUST_NAME,DOB,SSN_LAST4,PHONE,ZIP"
+            },
+            {
+              "system": "core_b",
+              "table": "customers.jsonl",
+              "field": "first_name,last_name,date_of_birth,ssn_last_four,phone,address.postal_code"
+            }
+          ],
+          "transform": "1 deterministic / 2 fuzzy / null single-core",
+          "rules": [
+            "ER-03",
+            "ER-04"
+          ],
+          "plain": "How the two banks' records were linked: 1 means an exact match on name and SSN digits, 2 means a close match scored by similarity, 3 means a person reviewed the pair and confirmed it."
+        },
+        "match_confidence": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "CUSTMAST.psv",
+              "field": "CUST_NAME,DOB,SSN_LAST4,PHONE,ZIP"
+            },
+            {
+              "system": "core_b",
+              "table": "customers.jsonl",
+              "field": "first_name,last_name,date_of_birth,ssn_last_four,phone,address.postal_code"
+            }
+          ],
+          "transform": "0-1 score; 1.00 for tier 1",
+          "rules": [
+            "ER-03",
+            "ER-04"
+          ],
+          "plain": "How sure the matching was, from 0 to 1. Exact matches score 1."
+        },
+        "open_accounts": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "ACCTMAST.psv",
+              "field": "ACCT_STAT"
+            },
+            {
+              "system": "core_b",
+              "table": "accounts.jsonl",
+              "field": "status"
+            }
+          ],
+          "transform": "count of open accounts",
+          "rules": [
+            "S-12"
+          ],
+          "plain": "How many open accounts the person has across both banks."
+        },
+        "has_checking": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "ACCTMAST.psv",
+              "field": "PROD_CD"
+            },
+            {
+              "system": "core_b",
+              "table": "accounts.jsonl",
+              "field": "product_type"
+            }
+          ],
+          "transform": "any open checking",
+          "rules": [
+            "S-10",
+            "S-12"
+          ],
+          "plain": "Has at least one open checking account."
+        },
+        "has_savings": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "ACCTMAST.psv",
+              "field": "PROD_CD"
+            },
+            {
+              "system": "core_b",
+              "table": "accounts.jsonl",
+              "field": "product_type"
+            }
+          ],
+          "transform": "any open savings",
+          "rules": [
+            "S-10",
+            "S-12"
+          ],
+          "plain": "Has at least one open savings account."
+        },
+        "has_mortgage": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "ACCTMAST.psv",
+              "field": "PROD_CD"
+            },
+            {
+              "system": "core_b",
+              "table": "accounts.jsonl",
+              "field": "product_type"
+            }
+          ],
+          "transform": "any open mortgage",
+          "rules": [
+            "S-10",
+            "S-12"
+          ],
+          "plain": "Has at least one open mortgage."
+        },
+        "has_cd": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "ACCTMAST.psv",
+              "field": "PROD_CD"
+            },
+            {
+              "system": "core_b",
+              "table": "accounts.jsonl",
+              "field": "product_type"
+            }
+          ],
+          "transform": "any open cd",
+          "rules": [
+            "S-10",
+            "S-12"
+          ],
+          "plain": "Has at least one open certificate of deposit."
+        },
+        "deposit_balance": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "ACCTMAST.psv",
+              "field": "CUR_BAL_CENTS"
+            },
+            {
+              "system": "core_b",
+              "table": "accounts.jsonl",
+              "field": "balance"
+            }
+          ],
+          "transform": "sum of open deposit balances in dollars",
+          "rules": [
+            "S-11",
+            "S-13",
+            "G-05"
+          ],
+          "plain": "Total money in open checking, savings and CD accounts, in dollars."
+        },
+        "loan_balance": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "ACCTMAST.psv",
+              "field": "CUR_BAL_CENTS"
+            },
+            {
+              "system": "core_b",
+              "table": "accounts.jsonl",
+              "field": "balance"
+            }
+          ],
+          "transform": "sum of open loan balances in dollars",
+          "rules": [
+            "S-11",
+            "S-13",
+            "G-06"
+          ],
+          "plain": "Total owed on open loans, in dollars."
+        },
+        "last_activity_ts": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "TXNHIST.psv",
+              "field": "TXN_DT"
+            },
+            {
+              "system": "core_b",
+              "table": "transactions.jsonl",
+              "field": "posted_at"
+            }
+          ],
+          "transform": "max transaction time across open accounts",
+          "rules": [
+            "S-20"
+          ],
+          "plain": "The most recent transaction on any of the person's open accounts."
+        },
+        "txn_count_90d": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "TXNHIST.psv",
+              "field": "TXN_DT"
+            },
+            {
+              "system": "core_b",
+              "table": "transactions.jsonl",
+              "field": "posted_at"
+            }
+          ],
+          "transform": "transactions in the 90 days before as-of",
+          "rules": [
+            "S-20"
+          ],
+          "plain": "Number of transactions in the 90 days before the as-of date."
+        },
+        "checking_last_txn_ts": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "TXNHIST.psv",
+              "field": "TXN_DT"
+            },
+            {
+              "system": "core_b",
+              "table": "transactions.jsonl",
+              "field": "posted_at"
+            }
+          ],
+          "transform": "max transaction time on open checking accounts",
+          "rules": [
+            "S-20"
+          ],
+          "plain": "The most recent transaction on any open checking account."
+        },
+        "checking_dormant_180d": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "TXNHIST.psv",
+              "field": "TXN_DT"
+            },
+            {
+              "system": "core_b",
+              "table": "transactions.jsonl",
+              "field": "posted_at"
+            }
+          ],
+          "transform": "any open checking account with no activity in 180 days",
+          "rules": [
+            "S-20",
+            "G-10",
+            "G-11"
+          ],
+          "plain": "True if at least one open checking account has had no transactions for 180 days."
+        }
+      }
+    },
+    "account_360": {
+      "grain": "one row per account",
+      "columns": {
+        "customer_key": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "ACCTMAST.psv",
+              "field": "CIF_NO"
+            },
+            {
+              "system": "core_b",
+              "table": "accounts.jsonl",
+              "field": "customer_id"
+            }
+          ],
+          "transform": "joined through customer_xref",
+          "rules": [
+            "ER-07"
+          ],
+          "plain": "Our own id for the person who holds this account."
+        },
+        "source_system": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "ACCTMAST.psv",
+              "field": "(file)"
+            },
+            {
+              "system": "core_b",
+              "table": "accounts.jsonl",
+              "field": "(file)"
+            }
+          ],
+          "transform": "which core the account lives in",
+          "rules": [],
+          "plain": "Which bank's system the account lives in."
+        },
+        "source_account_id": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "ACCTMAST.psv",
+              "field": "ACCT_NO"
+            },
+            {
+              "system": "core_b",
+              "table": "accounts.jsonl",
+              "field": "account_id"
+            }
+          ],
+          "transform": "pass-through",
+          "rules": [],
+          "plain": "The account number as that bank's system records it."
+        },
+        "source_customer_id": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "ACCTMAST.psv",
+              "field": "CIF_NO"
+            },
+            {
+              "system": "core_b",
+              "table": "accounts.jsonl",
+              "field": "customer_id"
+            }
+          ],
+          "transform": "pass-through",
+          "rules": [],
+          "plain": "The customer id as that bank's system records it."
+        },
+        "product_type": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "ACCTMAST.psv",
+              "field": "PROD_CD"
+            },
+            {
+              "system": "core_b",
+              "table": "accounts.jsonl",
+              "field": "product_type"
+            }
+          ],
+          "transform": "canonical taxonomy",
+          "rules": [
+            "S-10"
+          ],
+          "plain": "What kind of account it is, using one shared vocabulary for both banks."
+        },
+        "product_category": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "ACCTMAST.psv",
+              "field": "PROD_CD"
+            },
+            {
+              "system": "core_b",
+              "table": "accounts.jsonl",
+              "field": "product_type"
+            }
+          ],
+          "transform": "deposit / loan",
+          "rules": [
+            "S-13"
+          ],
+          "plain": "Whether the account holds the customer's money (deposit) or ours (loan)."
+        },
+        "source_product_code": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "ACCTMAST.psv",
+              "field": "PROD_CD"
+            },
+            {
+              "system": "core_b",
+              "table": "accounts.jsonl",
+              "field": "product_type"
+            }
+          ],
+          "transform": "pass-through of the source code",
+          "rules": [],
+          "plain": "The product code exactly as that bank's system wrote it."
+        },
+        "opened_on": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "ACCTMAST.psv",
+              "field": "OPEN_DT"
+            },
+            {
+              "system": "core_b",
+              "table": "accounts.jsonl",
+              "field": "opened_on"
+            }
+          ],
+          "transform": "parsed to date",
+          "rules": [
+            "S-02",
+            "S-03"
+          ],
+          "plain": "The date the account was opened, converted from the bank's date format."
+        },
+        "balance": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "ACCTMAST.psv",
+              "field": "CUR_BAL_CENTS"
+            },
+            {
+              "system": "core_b",
+              "table": "accounts.jsonl",
+              "field": "balance"
+            }
+          ],
+          "transform": "dollars",
+          "rules": [
+            "S-11"
+          ],
+          "plain": "Current balance in dollars. Harbor Bank stores cents, so those were divided by 100."
+        },
+        "is_open": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "ACCTMAST.psv",
+              "field": "ACCT_STAT"
+            },
+            {
+              "system": "core_b",
+              "table": "accounts.jsonl",
+              "field": "status"
+            }
+          ],
+          "transform": "open flag",
+          "rules": [
+            "S-12"
+          ],
+          "plain": "Whether the account is open today."
+        },
+        "last_txn_ts": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "TXNHIST.psv",
+              "field": "TXN_DT"
+            },
+            {
+              "system": "core_b",
+              "table": "transactions.jsonl",
+              "field": "posted_at"
+            }
+          ],
+          "transform": "max transaction time",
+          "rules": [
+            "S-20"
+          ],
+          "plain": "The most recent transaction on this account."
+        },
+        "days_since_last_txn": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "TXNHIST.psv",
+              "field": "TXN_DT"
+            },
+            {
+              "system": "core_b",
+              "table": "transactions.jsonl",
+              "field": "posted_at"
+            }
+          ],
+          "transform": "as-of minus last transaction",
+          "rules": [
+            "S-20"
+          ],
+          "plain": "Days between the last transaction and the as-of date."
+        },
+        "txn_count_90d": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "TXNHIST.psv",
+              "field": "TXN_DT"
+            },
+            {
+              "system": "core_b",
+              "table": "transactions.jsonl",
+              "field": "posted_at"
+            }
+          ],
+          "transform": "count in the 90 days before as-of",
+          "rules": [
+            "S-20"
+          ],
+          "plain": "Transactions in the 90 days before the as-of date."
+        },
+        "txn_count_180d": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "TXNHIST.psv",
+              "field": "TXN_DT"
+            },
+            {
+              "system": "core_b",
+              "table": "transactions.jsonl",
+              "field": "posted_at"
+            }
+          ],
+          "transform": "count in the 180 days before as-of",
+          "rules": [
+            "S-20"
+          ],
+          "plain": "Transactions in the 180 days before the as-of date."
+        },
+        "txn_count_365d": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "TXNHIST.psv",
+              "field": "TXN_DT"
+            },
+            {
+              "system": "core_b",
+              "table": "transactions.jsonl",
+              "field": "posted_at"
+            }
+          ],
+          "transform": "count in the feed window",
+          "rules": [
+            "S-20"
+          ],
+          "plain": "Transactions in the whole year of data."
+        },
+        "credits_365d": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "TXNHIST.psv",
+              "field": "AMT,DR_CR"
+            },
+            {
+              "system": "core_b",
+              "table": "transactions.jsonl",
+              "field": "amount"
+            }
+          ],
+          "transform": "sum of positive amounts",
+          "rules": [
+            "S-21"
+          ],
+          "plain": "Money that came into the account over the year."
+        },
+        "debits_365d": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "TXNHIST.psv",
+              "field": "AMT,DR_CR"
+            },
+            {
+              "system": "core_b",
+              "table": "transactions.jsonl",
+              "field": "amount"
+            }
+          ],
+          "transform": "sum of negative amounts",
+          "rules": [
+            "S-21"
+          ],
+          "plain": "Money that left the account over the year."
+        },
+        "is_dormant_180d": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "TXNHIST.psv",
+              "field": "TXN_DT"
+            },
+            {
+              "system": "core_b",
+              "table": "transactions.jsonl",
+              "field": "posted_at"
+            }
+          ],
+          "transform": "open and no transactions in 180 days",
+          "rules": [
+            "S-12",
+            "S-20",
+            "G-10"
+          ],
+          "plain": "True if the account is open but has had no transactions for 180 days."
+        }
+      }
+    },
+    "transactions": {
+      "grain": "one row per transaction",
+      "columns": {
+        "customer_key": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "ACCTMAST.psv",
+              "field": "CIF_NO"
+            },
+            {
+              "system": "core_b",
+              "table": "accounts.jsonl",
+              "field": "customer_id"
+            }
+          ],
+          "transform": "joined through account -> customer_xref",
+          "rules": [
+            "ER-07"
+          ],
+          "plain": "Our own id for the person whose account this transaction belongs to."
+        },
+        "source_system": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "TXNHIST.psv",
+              "field": "(file)"
+            },
+            {
+              "system": "core_b",
+              "table": "transactions.jsonl",
+              "field": "(file)"
+            }
+          ],
+          "transform": "which core",
+          "rules": [],
+          "plain": "Which bank's system recorded the transaction."
+        },
+        "source_txn_id": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "TXNHIST.psv",
+              "field": "TXN_ID"
+            },
+            {
+              "system": "core_b",
+              "table": "transactions.jsonl",
+              "field": "transaction_id"
+            }
+          ],
+          "transform": "pass-through",
+          "rules": [],
+          "plain": "The transaction id as that bank's system recorded it."
+        },
+        "source_account_id": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "TXNHIST.psv",
+              "field": "ACCT_NO"
+            },
+            {
+              "system": "core_b",
+              "table": "transactions.jsonl",
+              "field": "account_id"
+            }
+          ],
+          "transform": "pass-through",
+          "rules": [],
+          "plain": "The account number as that bank's system records it."
+        },
+        "txn_ts": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "TXNHIST.psv",
+              "field": "TXN_DT"
+            },
+            {
+              "system": "core_b",
+              "table": "transactions.jsonl",
+              "field": "posted_at"
+            }
+          ],
+          "transform": "timestamp",
+          "rules": [
+            "S-20"
+          ],
+          "plain": "When the transaction happened, converted from each bank's date format."
+        },
+        "amount": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "TXNHIST.psv",
+              "field": "AMT,DR_CR"
+            },
+            {
+              "system": "core_b",
+              "table": "transactions.jsonl",
+              "field": "amount"
+            }
+          ],
+          "transform": "signed dollars",
+          "rules": [
+            "S-21"
+          ],
+          "plain": "The amount in dollars. Money in is positive, money out is negative."
+        },
+        "memo": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "TXNHIST.psv",
+              "field": "DESC"
+            },
+            {
+              "system": "core_b",
+              "table": "transactions.jsonl",
+              "field": "description"
+            }
+          ],
+          "transform": "title case",
+          "rules": [
+            "S-22"
+          ],
+          "plain": "The description on the transaction."
+        },
+        "direction": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "TXNHIST.psv",
+              "field": "DR_CR"
+            },
+            {
+              "system": "core_b",
+              "table": "transactions.jsonl",
+              "field": "amount"
+            }
+          ],
+          "transform": "credit / debit",
+          "rules": [
+            "S-23"
+          ],
+          "plain": "Whether money came in (credit) or went out (debit)."
+        }
+      }
+    },
+    "review_queue": {
+      "grain": "one row per unmerged cross-core candidate pair awaiting human review",
+      "columns": {
+        "priority": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "CUSTMAST.psv",
+              "field": "CIF_NO"
+            },
+            {
+              "system": "core_b",
+              "table": "customers.jsonl",
+              "field": "customer_id"
+            }
+          ],
+          "transform": "1 = most money at stake",
+          "rules": [
+            "G-20"
+          ],
+          "plain": "Our suggested order to review these pairs: most money at stake first."
+        },
+        "core_a_customer_key": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "CUSTMAST.psv",
+              "field": "CIF_NO"
+            }
+          ],
+          "transform": "customer_key of the Core A side (unmerged)",
+          "rules": [
+            "ER-07",
+            "G-20"
+          ],
+          "plain": "Our id for the Harbor Bank side of this possible duplicate."
+        },
+        "core_b_customer_key": {
+          "sources": [
+            {
+              "system": "core_b",
+              "table": "customers.jsonl",
+              "field": "customer_id"
+            }
+          ],
+          "transform": "customer_key of the Core B side (unmerged)",
+          "rules": [
+            "ER-07",
+            "G-20"
+          ],
+          "plain": "Our id for the Riverside Bank side of this possible duplicate."
+        },
+        "core_a_cif": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "CUSTMAST.psv",
+              "field": "CIF_NO"
+            }
+          ],
+          "transform": "pass-through",
+          "rules": [],
+          "plain": "Harbor Bank's customer number for this record."
+        },
+        "core_b_customer_id": {
+          "sources": [
+            {
+              "system": "core_b",
+              "table": "customers.jsonl",
+              "field": "customer_id"
+            }
+          ],
+          "transform": "pass-through",
+          "rules": [],
+          "plain": "Riverside Bank's customer id for this record."
+        },
+        "core_a_name": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "CUSTMAST.psv",
+              "field": "CUST_NAME"
+            }
+          ],
+          "transform": "title case",
+          "rules": [
+            "S-01"
+          ],
+          "plain": "The name as Harbor Bank has it."
+        },
+        "core_b_name": {
+          "sources": [
+            {
+              "system": "core_b",
+              "table": "customers.jsonl",
+              "field": "first_name,last_name"
+            }
+          ],
+          "transform": "first + last",
+          "rules": [],
+          "plain": "The name as Riverside Bank has it."
+        },
+        "dob": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "CUSTMAST.psv",
+              "field": "DOB"
+            },
+            {
+              "system": "core_b",
+              "table": "customers.jsonl",
+              "field": "date_of_birth"
+            }
+          ],
+          "transform": "shared date of birth (blocking key)",
+          "rules": [
+            "ER-01"
+          ],
+          "plain": "The date of birth both records share."
+        },
+        "confidence": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "CUSTMAST.psv",
+              "field": "CUST_NAME,SSN_LAST4,PHONE,ZIP"
+            },
+            {
+              "system": "core_b",
+              "table": "customers.jsonl",
+              "field": "first_name,last_name,ssn_last_four,phone,address.postal_code"
+            }
+          ],
+          "transform": "tier 2 score",
+          "rules": [
+            "ER-04",
+            "ER-05"
+          ],
+          "plain": "How likely the two records are the same person, from 0 to 1. Below 0.80 we ask a person instead of merging."
+        },
+        "name_similarity": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "CUSTMAST.psv",
+              "field": "CUST_NAME"
+            },
+            {
+              "system": "core_b",
+              "table": "customers.jsonl",
+              "field": "first_name,last_name"
+            }
+          ],
+          "transform": "token-set ratio of name keys, 0-1",
+          "rules": [
+            "S-07",
+            "S-08",
+            "ER-04"
+          ],
+          "plain": "How alike the two names are, from 0 to 1."
+        },
+        "ssn_signal": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "CUSTMAST.psv",
+              "field": "SSN_LAST4"
+            },
+            {
+              "system": "core_b",
+              "table": "customers.jsonl",
+              "field": "ssn_last_four"
+            }
+          ],
+          "transform": "1 equal, 0.5 missing on a side",
+          "rules": [
+            "ER-04"
+          ],
+          "plain": "Whether the last four SSN digits agree (1) or are missing on one side (0.5)."
+        },
+        "core_b_ssn_missing": {
+          "sources": [
+            {
+              "system": "core_b",
+              "table": "customers.jsonl",
+              "field": "ssn_last_four"
+            }
+          ],
+          "transform": "true when Core B has no SSN last-4",
+          "rules": [],
+          "plain": "True when Riverside Bank has no SSN digits on file for this record."
+        },
+        "phone_match": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "CUSTMAST.psv",
+              "field": "PHONE"
+            },
+            {
+              "system": "core_b",
+              "table": "customers.jsonl",
+              "field": "phone"
+            }
+          ],
+          "transform": "10-digit phones equal",
+          "rules": [
+            "S-04",
+            "ER-04"
+          ],
+          "plain": "Whether the phone numbers agree."
+        },
+        "postal_code_match": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "CUSTMAST.psv",
+              "field": "ZIP"
+            },
+            {
+              "system": "core_b",
+              "table": "customers.jsonl",
+              "field": "address.postal_code"
+            }
+          ],
+          "transform": "postal codes equal",
+          "rules": [
+            "ER-04"
+          ],
+          "plain": "Whether the postal codes agree."
+        },
+        "core_a_balance": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "ACCTMAST.psv",
+              "field": "CUR_BAL_CENTS"
+            }
+          ],
+          "transform": "deposits + loans of the Core A side",
+          "rules": [
+            "S-11",
+            "G-05",
+            "G-06"
+          ],
+          "plain": "Deposits plus loans on the Harbor Bank side."
+        },
+        "core_b_balance": {
+          "sources": [
+            {
+              "system": "core_b",
+              "table": "accounts.jsonl",
+              "field": "balance"
+            }
+          ],
+          "transform": "deposits + loans of the Core B side",
+          "rules": [
+            "G-05",
+            "G-06"
+          ],
+          "plain": "Deposits plus loans on the Riverside Bank side."
+        },
+        "combined_balance": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "ACCTMAST.psv",
+              "field": "CUR_BAL_CENTS"
+            },
+            {
+              "system": "core_b",
+              "table": "accounts.jsonl",
+              "field": "balance"
+            }
+          ],
+          "transform": "sum of both sides",
+          "rules": [
+            "G-20"
+          ],
+          "plain": "Money across both records together."
+        },
+        "core_a_open_accounts": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "ACCTMAST.psv",
+              "field": "ACCT_STAT"
+            }
+          ],
+          "transform": "open accounts on the Core A side",
+          "rules": [
+            "S-12"
+          ],
+          "plain": "Open accounts on the Harbor Bank side."
+        },
+        "core_b_open_accounts": {
+          "sources": [
+            {
+              "system": "core_b",
+              "table": "accounts.jsonl",
+              "field": "status"
+            }
+          ],
+          "transform": "open accounts on the Core B side",
+          "rules": [
+            "S-12"
+          ],
+          "plain": "Open accounts on the Riverside Bank side."
+        }
+      }
+    }
+  }
+}

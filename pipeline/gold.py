@@ -11,12 +11,12 @@ from datetime import datetime, timedelta
 
 import polars as pl
 
-from pipeline import AS_OF, DORMANT_DAYS, GOLD, SILVER
+from pipeline import DORMANT_DAYS, GOLD, SILVER, get_as_of
 from pipeline.delta import read_table, write_table
 
 
 def account_360(accounts: pl.DataFrame, txns: pl.DataFrame, xref: pl.DataFrame) -> pl.DataFrame:
-    as_of = datetime.combine(AS_OF, datetime.max.time())
+    as_of = datetime.combine(get_as_of(), datetime.max.time())
     cutoff_180 = as_of - timedelta(days=DORMANT_DAYS)
     cutoff_90 = as_of - timedelta(days=90)
     agg = txns.group_by(["source_system", "source_account_id"]).agg(
@@ -220,7 +220,7 @@ def review_queue(cust: pl.DataFrame, xref: pl.DataFrame, review: pl.DataFrame, c
     )
 
 
-def run() -> dict[str, int]:
+def run(fresh: bool = True) -> dict[str, int]:
     cust = read_table(SILVER, "customers")
     accounts = read_table(SILVER, "accounts")
     txns = read_table(SILVER, "transactions")
@@ -228,7 +228,9 @@ def run() -> dict[str, int]:
     a360 = account_360(accounts, txns, xref)
     c360 = customer_360(cust, xref, a360)
     rq = review_queue(cust, xref, read_table(SILVER, "match_review_queue"), c360)
-    write_table(a360, GOLD, "account_360", "One row per account with resolved customer_key, activity and dormancy")
-    write_table(c360, GOLD, "customer_360", "One row per resolved customer across both cores")
-    write_table(rq, GOLD, "review_queue", "Cross-core candidate pairs below the auto-merge threshold, enriched for human triage")
+    write_table(a360, GOLD, "account_360", "One row per account with resolved customer_key, activity and dormancy", fresh=fresh)
+    write_table(c360, GOLD, "customer_360", "One row per resolved customer across both cores", fresh=fresh)
+    write_table(
+        rq, GOLD, "review_queue", "Cross-core candidate pairs below the auto-merge threshold, enriched for human triage", fresh=fresh
+    )
     return {"account_360": a360.height, "customer_360": c360.height, "review_queue": rq.height}

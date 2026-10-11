@@ -1,5 +1,7 @@
-"""Entry point: `uv run python -m pipeline` (generates raw feeds, then bronze -> silver -> match
--> gold -> export). Every output is deterministic for a given SEED."""
+"""Entry point: `uv run python -m pipeline`. Generates both raw batches, then for each batch runs
+bronze -> silver -> match -> gold -> lineage -> prompt -> export -> quality (the first batch creates
+every Delta table at version 0, the second overwrites it as version 1), then builds the replay
+cache on the latest batch and the change summary between the two. Deterministic for SEED."""
 
 from __future__ import annotations
 
@@ -9,12 +11,32 @@ import time
 
 import polars as pl
 
-from pipeline import AS_OF, EXPORT, GOLD, SEED, SILVER, agent_prompt, bronze, gold, lineage, match, quality, replay, silver
-from pipeline.delta import read_table
+from pipeline import (
+    BATCHES,
+    EXPORT,
+    GOLD,
+    SEED,
+    SILVER,
+    agent_prompt,
+    bronze,
+    gold,
+    lineage,
+    match,
+    quality,
+    raw_dir,
+    replay,
+    set_as_of,
+    silver,
+    version_dir,
+)
+from pipeline.delta import read_table, table_version
+
+TABLES = ("customer_360", "account_360", "transactions", "review_queue")
 
 
 def export() -> dict[str, dict]:
-    EXPORT.mkdir(parents=True, exist_ok=True)
+    out = version_dir()
+    out.mkdir(parents=True, exist_ok=True)
     c360 = read_table(GOLD, "customer_360")
     a360 = read_table(GOLD, "account_360")
     txns = (
@@ -24,21 +46,19 @@ def export() -> dict[str, dict]:
         .sort(["source_system", "source_txn_id"])
     )
     tables = {"customer_360": c360, "account_360": a360, "transactions": txns, "review_queue": read_table(GOLD, "review_queue")}
-    out = {}
+    res = {}
     for name, df in tables.items():
-        df.write_parquet(EXPORT / f"{name}.parquet", compression="zstd", statistics=True)
-        out[name] = {"rows": df.height, "columns": df.columns}
-    return out
+        df.write_parquet(out / f"{name}.parquet", compression="zstd", statistics=True)
+        res[name] = {"rows": df.height, "columns": df.columns}
+    return res
 
 
 def raw_samples(n: int = 4) -> dict:
-    """First rows of every raw feed, exactly as received, so the UI can show the two cores side by side."""
-    from pipeline import RAW
-
+    """First rows of every raw feed of the current batch, exactly as received, for the side-by-side view."""
     out: dict = {}
     for system in ("core_a", "core_b"):
         out[system] = {}
-        for path in sorted((RAW / system).iterdir()):
+        for path in sorted((raw_dir() / system).iterdir()):
             lines = path.read_text().splitlines()
             if path.suffix == ".psv":
                 cols = lines[0].split("|")
@@ -51,51 +71,103 @@ def raw_samples(n: int = 4) -> dict:
     return out
 
 
+def changes(prev_dir, cur_dir) -> dict:
+    """What changed between two exported versions, in numbers the page turns into sentences."""
+    c0 = pl.read_parquet(prev_dir / "customer_360.parquet")
+    c1 = pl.read_parquet(cur_dir / "customer_360.parquet")
+    a0 = pl.read_parquet(prev_dir / "account_360.parquet")
+    a1 = pl.read_parquet(cur_dir / "account_360.parquet")
+    t1 = pl.read_parquet(cur_dir / "transactions.parquet")
+    m0 = json.loads((prev_dir / "match_report.json").read_text())
+    m1 = json.loads((cur_dir / "match_report.json").read_text())
+    keys0, keys1 = set(c0["customer_key"]), set(c1["customer_key"])
+    both = c0.select("customer_key", "postal_code", "city").join(
+        c1.select("customer_key", "postal_code", "city"), on="customer_key", suffix="_new"
+    )
+    acct_key = ["source_system", "source_account_id"]
+    d0 = a0.filter(pl.col("is_open")).select(acct_key + ["is_dormant_180d"])
+    d1 = a1.filter(pl.col("is_open")).select(acct_key + ["is_dormant_180d"])
+    j = d0.join(d1, on=acct_key, suffix="_new")
+    return {
+        "from_as_of": m0["as_of"],
+        "to_as_of": m1["as_of"],
+        "customers_before": c0.height,
+        "customers_after": c1.height,
+        "new_customers": len(keys1 - keys0),
+        "customers_merged_by_reviewer": m1.get("confirmed_by_reviewer", 0),
+        "pairs_rejected_by_reviewer": m1.get("rejected_by_reviewer", 0),
+        "review_queue_before": m0["review_queue"],
+        "review_queue_after": m1["review_queue"],
+        "address_changes": both.filter(pl.col("postal_code") != pl.col("postal_code_new")).height,
+        "accounts_went_quiet": j.filter(~pl.col("is_dormant_180d") & pl.col("is_dormant_180d_new")).height,
+        "accounts_woke_up": j.filter(pl.col("is_dormant_180d") & ~pl.col("is_dormant_180d_new")).height,
+        "new_accounts": a1.height - a0.height,
+        "transactions_in_new_month": t1.filter(pl.col("txn_ts") > pl.lit(m0["as_of"]).str.to_datetime("%Y-%m-%d")).height,
+        "deposits_before": round(c0["deposit_balance"].sum(), 2),
+        "deposits_after": round(c1["deposit_balance"].sum(), 2),
+    }
+
+
 def main() -> int:
     t0 = time.perf_counter()
     from data.generators.__main__ import main as generate
 
-    generate()
-    b = bronze.run()
-    s = silver.run()
-    m = match.run()
-    g = gold.run()
-    lineage.write()
-    e = export()
-    (EXPORT / "raw_samples.json").write_text(json.dumps(raw_samples(), indent=1) + "\n")
-    agent_prompt.write()
-    q = quality.run()
-    r = replay.write()
-    manifest = {
-        "schema_version": 1,
-        "seed": SEED,
-        "as_of": AS_OF.isoformat(),
-        "bronze": b,
-        "silver": s,
-        "gold": g,
-        "export": e,
-        "replay": r,
-        "quality": {"checks": len(q), "passed": sum(1 for c in q if c["passed"])},
-        "match": {
-            k: m[k]
-            for k in (
-                "truth_pairs",
-                "auto_merged",
-                "tier_1_deterministic",
-                "tier_2_fuzzy",
-                "review_queue",
-                "precision",
-                "recall",
-                "traps_merged",
-            )
-            if k in m
-        },
-    }
-    (EXPORT / "manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
-    # spike.parquet from Phase 0 is superseded
+    gen = generate()
+    versions = []
+    for i, as_of in enumerate(BATCHES):
+        set_as_of(as_of)
+        fresh = i == 0
+        b = bronze.run(fresh)
+        s = silver.run(fresh)
+        m = match.run()
+        g = gold.run(fresh)
+        lineage.write()
+        agent_prompt.write()
+        e = export()
+        q = quality.run()
+        manifest = {
+            "schema_version": 2,
+            "seed": SEED,
+            "as_of": as_of.isoformat(),
+            "version": i,
+            "is_latest": not fresh,
+            "versions": [{"as_of": d.isoformat(), "dir": "" if j == len(BATCHES) - 1 else f"v{j}"} for j, d in enumerate(BATCHES)],
+            "delta_versions": {f"gold/{t}": table_version(GOLD, t) for t in ("customer_360", "account_360", "review_queue")},
+            "generator": gen[as_of.isoformat()],
+            "bronze": b,
+            "silver": s,
+            "gold": g,
+            "export": e,
+            "quality": {"checks": len(q), "passed": sum(1 for c in q if c["passed"])},
+            "match": {
+                k: m[k]
+                for k in (
+                    "truth_pairs",
+                    "auto_merged",
+                    "tier_1_deterministic",
+                    "tier_2_fuzzy",
+                    "tier_3_confirmed",
+                    "review_queue",
+                    "precision",
+                    "recall",
+                    "traps_merged",
+                    "confirmed_by_reviewer",
+                    "rejected_by_reviewer",
+                )
+                if k in m
+            },
+        }
+        if not fresh:
+            (EXPORT / "raw_samples.json").write_text(json.dumps(raw_samples(), indent=1) + "\n")
+            manifest["replay"] = replay.write()
+            ch = changes(version_dir(BATCHES[i - 1]), EXPORT)
+            (EXPORT / "changes.json").write_text(json.dumps(ch, indent=1) + "\n")
+            manifest["changes"] = ch
+        (version_dir() / "manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+        versions.append(manifest)
+        print(f"[{as_of}] {json.dumps(manifest['match'])}")
     (EXPORT / "spike.parquet").unlink(missing_ok=True)
-    print(json.dumps(manifest["match"]), f"| {time.perf_counter() - t0:.1f}s")
-    print(pl.DataFrame({"table": list(e), "rows": [v["rows"] for v in e.values()]}))
+    print(json.dumps(versions[-1]["changes"]), f"| {time.perf_counter() - t0:.1f}s")
     return 0
 
 

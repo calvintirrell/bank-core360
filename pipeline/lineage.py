@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import json
 
-from pipeline import AS_OF, DORMANT_DAYS, EXPORT
+from pipeline import DORMANT_DAYS, get_as_of, version_dir
 
 A = "core_a"
 B = "core_b"
@@ -49,14 +49,15 @@ RULES = {
     "ER-04": "Tier 2 fuzzy: 0.40*name similarity (token-set ratio) + 0.30*ssn (1 equal / 0.5 missing) + 0.15*phone + 0.15*postal code; auto-merge >= 0.80",
     "ER-05": "Review queue: 0.55 <= confidence < 0.80, not merged",
     "ER-06": "Greedy one-to-one assignment by descending confidence",
-    "ER-07": "customer_key surrogate: Core A records in CIF order, then unmatched Core B in id order",
+    "ER-07": "customer_key surrogate: C + 7 digits hashed from the source id, stable across batches; a merged pair takes the Core A key",
+    "ER-08": "Reviewer decisions: a confirmed pair merges as tier 3 (confidence 1.0); a rejected pair never merges; only decisions dated on or before the batch as-of apply",
     "G-01": "Survivorship: contact/name fields prefer Core B (newer system) when present in both",
     "G-02": "customer_since = earliest relationship date across cores",
     "G-03": "is_active = active in any core",
     "G-04": "source_systems = which cores contributed to this customer",
     "G-05": "deposit_balance = sum of open deposit-category balances",
     "G-06": "loan_balance = sum of open loan-category balances",
-    "G-10": f"is_dormant_180d = open account with zero transactions in the {DORMANT_DAYS} days before {AS_OF.isoformat()}",
+    "G-10": f"is_dormant_180d = open account with zero transactions in the {DORMANT_DAYS} days before the as-of date",
     "G-11": "checking_dormant_180d = any open checking account dormant per G-10",
     "G-20": "review_queue = candidate pairs scored 0.55-0.80 (ER-05), not merged; each side remains its own customer_360 row; priority = rank by combined balance",
 }
@@ -165,7 +166,7 @@ REVIEW_QUEUE = {
 }
 
 LINEAGE = {
-    "as_of": AS_OF.isoformat(),
+    "as_of": None,  # set at write time to the batch being exported
     "systems": {
         A: {
             "plain": "Harbor Bank's system",
@@ -208,7 +209,7 @@ PLAIN: dict[str, dict[str, str]] = {
         "in_core_b": "Whether Riverside Bank's system has a record for this person.",
         "core_a_cif": "Harbor Bank's customer number for this person, if any.",
         "core_b_customer_id": "Riverside Bank's customer id for this person, if any.",
-        "match_tier": "How the two banks' records were linked: 1 means an exact match on name and SSN digits, 2 means a close match scored by similarity.",
+        "match_tier": "How the two banks' records were linked: 1 means an exact match on name and SSN digits, 2 means a close match scored by similarity, 3 means a person reviewed the pair and confirmed it.",
         "match_confidence": "How sure the matching was, from 0 to 1. Exact matches score 1.",
         "open_accounts": "How many open accounts the person has across both banks.",
         "has_checking": "Has at least one open checking account.",
@@ -281,5 +282,7 @@ for _table, _cols in PLAIN.items():
 
 
 def write() -> None:
-    EXPORT.mkdir(parents=True, exist_ok=True)
-    (EXPORT / "lineage.json").write_text(json.dumps(LINEAGE, indent=2) + "\n")
+    out = version_dir()
+    out.mkdir(parents=True, exist_ok=True)
+    LINEAGE["as_of"] = get_as_of().isoformat()
+    (out / "lineage.json").write_text(json.dumps(LINEAGE, indent=2) + "\n")

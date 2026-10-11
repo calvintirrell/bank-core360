@@ -9,7 +9,8 @@ from pathlib import Path
 from faker import Faker
 
 SEED = 360
-AS_OF = date(2026, 9, 30)
+AS_OF = date(2026, 9, 30)  # batch 1
+AS_OF_2 = date(2026, 10, 31)  # batch 2 (one month later)
 ROOT = Path(__file__).resolve().parents[2]
 RAW = ROOT / "lakehouse" / "raw"
 TRUTH = ROOT / "data" / "truth"
@@ -19,6 +20,8 @@ N_OVERLAP = 300  # 15% of unique people exist in both cores
 N_A = 1100
 N_B = N_UNIQUE - N_A + N_OVERLAP  # 1200
 N_TRAPS = 5  # same name + DOB, different person (must NOT merge)
+N_TRAP_REVIEW = 2  # same name + DOB, SSN missing, different contact details -> lands in the review queue; reviewer rejects
+N_NEW_B2 = 40  # new customers that arrive in batch 2 (half per core)
 N_TXNS = 50_000
 
 PRODUCTS = ["checking", "savings", "mortgage", "cd"]
@@ -86,37 +89,41 @@ def make_rng() -> tuple[random.Random, Faker]:
     return rng, fake
 
 
-def build_people(rng: random.Random, fake: Faker) -> list[Person]:
-    first_names = [fake.first_name() for _ in range(400)] + list(NICKNAMES.keys()) * 10
-    people: list[Person] = []
-    seen_ssn: set[str] = set()
-    for pid in range(N_UNIQUE):
-        first = rng.choice(first_names)
-        last = fake.last_name()
+def first_name_pool(fake: Faker) -> list[str]:
+    return [fake.first_name() for _ in range(400)] + list(NICKNAMES.keys()) * 10
+
+
+def make_person(pid: int, rng: random.Random, fake: Faker, first_names: list[str], seen_ssn: set[str]) -> Person:
+    first = rng.choice(first_names)
+    last = fake.last_name()
+    ssn4 = f"{rng.randint(0, 9999):04d}"
+    while ssn4 in seen_ssn:
         ssn4 = f"{rng.randint(0, 9999):04d}"
-        while ssn4 in seen_ssn:
-            ssn4 = f"{rng.randint(0, 9999):04d}"
-        seen_ssn.add(ssn4)
-        dob = date(1940, 1, 1) + timedelta(days=rng.randint(0, 365 * 66))
-        since = date(2005, 1, 1) + timedelta(days=rng.randint(0, 365 * 21))
-        people.append(
-            Person(
-                pid=pid,
-                first=first,
-                middle=rng.choice("ABCDEFGHJKLMNPRSTW"),
-                last=last,
-                dob=dob,
-                ssn4=ssn4,
-                street=fake.street_address(),
-                city=fake.city(),
-                state=fake.state_abbr(),
-                zip=f"{rng.randint(10000, 99999)}",
-                phone=f"{rng.randint(200, 989)}{rng.randint(200, 999)}{rng.randint(0, 9999):04d}",
-                email=f"{first.lower()}.{last.lower()}{rng.randint(1, 99)}@example.com",
-                since=since,
-            )
-        )
-    return people
+    seen_ssn.add(ssn4)
+    dob = date(1940, 1, 1) + timedelta(days=rng.randint(0, 365 * 66))
+    since = date(2005, 1, 1) + timedelta(days=rng.randint(0, 365 * 21))
+    return Person(
+        pid=pid,
+        first=first,
+        middle=rng.choice("ABCDEFGHJKLMNPRSTW"),
+        last=last,
+        dob=dob,
+        ssn4=ssn4,
+        street=fake.street_address(),
+        city=fake.city(),
+        state=fake.state_abbr(),
+        zip=f"{rng.randint(10000, 99999)}",
+        phone=f"{rng.randint(200, 989)}{rng.randint(200, 999)}{rng.randint(0, 9999):04d}",
+        email=f"{first.lower()}.{last.lower()}{rng.randint(1, 99)}@example.com",
+        since=since,
+    )
+
+
+def build_people(rng: random.Random, fake: Faker) -> tuple[list[Person], list[str], set[str]]:
+    first_names = first_name_pool(fake)
+    seen_ssn: set[str] = set()
+    people = [make_person(pid, rng, fake, first_names, seen_ssn) for pid in range(N_UNIQUE)]
+    return people, first_names, seen_ssn
 
 
 def overlap_kind(i: int) -> str:

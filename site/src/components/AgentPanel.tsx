@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ready } from '../lib/duckdb'
 import { useBankMode } from '../lib/ModeContext'
+import { useAsOf, versionDir } from '../lib/AsOfContext'
 import { askLive, fromToolResult, headlineFor, replayRun, type AgentRun } from '../lib/agent'
 import { HeadlineView } from './Headline'
 import { DEFAULT_MODEL, DemoCapError, MODELS, PROXY_URL, fetchQuota, routeLabel, type ModelId, type Quota } from '../lib/anthropic'
@@ -19,6 +20,8 @@ function byokRequested(): boolean {
 
 export function AgentPanel({ lineage }: { lineage: Lineage | null }) {
   const bank = useBankMode()
+  const { version } = useAsOf()
+  const latest = version === 'latest'
   const [showSettings, setShowSettings] = useState(false)
   const [apiKey, setApiKey] = useState(() => sessionStorage.getItem('bc360.apiKey') ?? '')
   const showByok = byokRequested() || apiKey !== '' || !PROXY_URL
@@ -40,7 +43,7 @@ export function AgentPanel({ lineage }: { lineage: Lineage | null }) {
     ready().then(() => setEngine('ready')).catch(() => setEngine('error'))
     fetchQuota().then(setQuota)
     loadReplay().then(setReplay).catch(() => setReplay(null))
-    loadAgentPrompt().then(setPrompt).catch(() => setPrompt(null))
+    loadAgentPrompt(versionDir(version)).then(setPrompt).catch(() => setPrompt(null))
     loadAgentTool().then(setTool).catch(() => setTool(null))
   }, [])
 
@@ -65,13 +68,13 @@ export function AgentPanel({ lineage }: { lineage: Lineage | null }) {
   const engineReady = engine === 'ready'
   const replayActive = useReplay || !liveAvailable
 
-  const cached = useMemo(() => replay?.questions.find((q) => q.question === question.trim()) ?? null, [replay, question])
+  const cached = useMemo(() => (latest ? replay?.questions.find((q) => q.question === question.trim()) ?? null : null), [replay, question, latest])
 
   async function ask(q: string) {
     const text = q.trim()
     if (!text) return
     setError('')
-    const entry = replay?.questions.find((e) => e.question === text) ?? null
+    const entry = latest ? replay?.questions.find((e) => e.question === text) ?? null : null
     if (replayActive) {
       if (!entry) {
         setError('Cached answers exist only for the listed questions. Pick one, or wait for the daily limit to reset.')
@@ -110,8 +113,9 @@ export function AgentPanel({ lineage }: { lineage: Lineage | null }) {
       }
     >
       <Card>
+        {!latest && <p className="mb-2 text-xs text-amber-800">You are looking at the page as it was on an earlier date. Saved answers are for today's data, so questions here run live.</p>}
         <div className="mb-2 flex flex-wrap gap-1.5">
-          {replay?.questions.map((q) => (
+          {(replay?.questions ?? []).map((q) => (
             <button
               key={q.id}
               type="button"

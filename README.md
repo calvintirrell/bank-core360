@@ -39,6 +39,7 @@ This demo is the first release I would ship for them, built end to end so the tr
 - Read the matching as decisions: how many were merged automatically, how many were held for a person, how many wrong merges against the answer key, with a worked example from the review queue. The technical view keeps the full scorecard.
 - Run your own SQL in the console. DuckDB-WASM executes it in your browser against the gold Parquet. Nothing leaves the page.
 - See what the bank handed over as six side-by-side mismatches from real rows, or open the raw files themselves, and the architecture that turns them into one table.
+- Switch the whole page between two dates. The first load is Sep 30; a second month arrived on Oct 31 with new customers, address changes, accounts going quiet or waking up, and a reviewer's decisions on the duplicate queue. Every Delta table carries both as versions, a "What changed" card summarises the month, and the technical view can query `customer_360_v0` against `customer_360_latest` side by side.
 - Read the data-quality checks the build ran: balances reconcile to the files to the cent, no orphan accounts or transactions, nobody listed twice, every column traceable, no wrong merges, transactions inside the feed window, the quiet flag consistent. The pipeline refuses to publish if any fails.
 - Open "Why this matters" under any section for the product view: the problem, the decision it supports, and one trade-off.
 
@@ -73,9 +74,9 @@ The pipeline is deterministic for its seed, so CI commits new outputs only when 
 | Layer | What happens | Tables |
 |---|---|---|
 | raw | Core A: pipe-delimited `CUSTMAST` / `ACCTMAST` / `TXNHIST` with CIF numbers, `YYYYMMDD` dates, product codes, balances in cents. Core B: JSON lines with UUIDs, ISO dates, nested addresses. | 6 files |
-| bronze | Landed untouched, plus ingest metadata | 6 Delta tables |
+| bronze | Landed untouched, plus ingest metadata; batch 2 lands as Delta version 1 of each table | 6 Delta tables |
 | silver | One schema per entity: parsed dates, signed amounts, canonical product taxonomy, 10-digit phones, name keys | customers, accounts, transactions |
-| match | Entity resolution across cores: DOB blocking, SSN conflict reject, tier 1 deterministic, tier 2 fuzzy with a 0-1 confidence, review queue below threshold. Scored against ground truth. | customer_xref, match_review_queue |
+| match | Entity resolution across cores: DOB blocking, SSN conflict reject, tier 1 deterministic, tier 2 fuzzy with a 0-1 confidence, review queue below threshold, and reviewer decisions from `data/decisions/` applied as tier 3 once their date has passed. Scored against ground truth. | customer_xref, match_review_queue |
 | gold | `customer_360` (one row per resolved customer, survivorship rules, product flags, dormancy), `account_360`, and `review_queue` (the unmerged candidate pairs, enriched for human triage) | 3 Delta tables |
 | export | Plain Parquet for the browser, `lineage.json` mapping every gold column to its source core, field and transform rule, the replay cache and the agent's prompt | 4 Parquet + 7 JSON/MD |
 
@@ -110,7 +111,7 @@ What I would validate first: the included-row block sizes, whether per-instituti
 
 ## Roadmap: the next two releases
 
-**Release 1, keep it current.** Incremental loads with change capture instead of full rebuilds, with Delta time travel exposed on the page so a user can ask "what did this customer look like last quarter." A review-queue workflow: approve or reject a proposed merge, and the decision feeds back into the next match run. Scheduled data-quality checks with the results shown next to the tables they describe.
+**Release 1, keep it current.** Delivered in part on this page: a second batch as a Delta version with an as-of switch, reviewer decisions that feed the next match run, and data-quality checks shown next to the tables. Still to do: incremental loads with change capture instead of full rebuilds, and scheduled checks that alert on drift.
 
 **Release 2, open it up.** An Iceberg mirror of the gold layer behind a catalog so the bank's BI tool and warehouse read the same tables the page does. Role-based masking applied at query time, so the analyst sees SSN last-4 and the branch manager does not. An audit log of every question, the SQL it produced and who asked. Export to the bank's own reporting tool.
 

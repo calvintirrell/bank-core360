@@ -1,0 +1,165 @@
+{
+  "as_of": "2026-09-30",
+  "bronze": {
+    "core_a_acctmast": 2376,
+    "core_a_custmast": 1100,
+    "core_a_txnhist": 24371,
+    "core_b_accounts": 2551,
+    "core_b_customers": 1200,
+    "core_b_transactions": 25629
+  },
+  "delta_versions": {
+    "gold/account_360": 0,
+    "gold/customer_360": 0,
+    "gold/review_queue": 0
+  },
+  "export": {
+    "account_360": {
+      "columns": [
+        "customer_key",
+        "source_system",
+        "source_account_id",
+        "source_customer_id",
+        "product_type",
+        "product_category",
+        "source_product_code",
+        "opened_on",
+        "balance",
+        "is_open",
+        "last_txn_ts",
+        "days_since_last_txn",
+        "txn_count_90d",
+        "txn_count_180d",
+        "txn_count_365d",
+        "credits_365d",
+        "debits_365d",
+        "is_dormant_180d"
+      ],
+      "rows": 4927
+    },
+    "customer_360": {
+      "columns": [
+        "customer_key",
+        "full_name",
+        "first_name",
+        "last_name",
+        "dob",
+        "email",
+        "phone",
+        "city",
+        "state",
+        "postal_code",
+        "customer_since",
+        "is_active",
+        "source_systems",
+        "in_core_a",
+        "in_core_b",
+        "core_a_cif",
+        "core_b_customer_id",
+        "match_tier",
+        "match_confidence",
+        "open_accounts",
+        "has_checking",
+        "has_savings",
+        "has_mortgage",
+        "has_cd",
+        "deposit_balance",
+        "loan_balance",
+        "last_activity_ts",
+        "txn_count_90d",
+        "checking_last_txn_ts",
+        "checking_dormant_180d"
+      ],
+      "rows": 2035
+    },
+    "review_queue": {
+      "columns": [
+        "priority",
+        "core_a_customer_key",
+        "core_b_customer_key",
+        "core_a_cif",
+        "core_b_customer_id",
+        "core_a_name",
+        "core_b_name",
+        "dob",
+        "confidence",
+        "name_similarity",
+        "ssn_signal",
+        "core_b_ssn_missing",
+        "phone_match",
+        "postal_code_match",
+        "core_a_balance",
+        "core_b_balance",
+        "combined_balance",
+        "core_a_open_accounts",
+        "core_b_open_accounts"
+      ],
+      "rows": 27
+    },
+    "transactions": {
+      "columns": [
+        "customer_key",
+        "source_system",
+        "source_txn_id",
+        "source_account_id",
+        "txn_ts",
+        "amount",
+        "memo",
+        "direction"
+      ],
+      "rows": 50000
+    }
+  },
+  "generator": {
+    "accounts": 4927,
+    "as_of": "2026-09-30",
+    "core_a_customers": 1100,
+    "core_b_customers": 1200,
+    "overlap": 300,
+    "transactions": 50000,
+    "trap_review": 2,
+    "traps": 5,
+    "unique_people": 2000
+  },
+  "gold": {
+    "account_360": 4927,
+    "customer_360": 2035,
+    "review_queue": 27
+  },
+  "is_latest": false,
+  "match": {
+    "auto_merged": 265,
+    "confirmed_by_reviewer": 0,
+    "precision": 1.0,
+    "recall": 0.8833,
+    "rejected_by_reviewer": 0,
+    "review_queue": 27,
+    "tier_1_deterministic": 198,
+    "tier_2_fuzzy": 67,
+    "tier_3_confirmed": 0,
+    "traps_merged": 0,
+    "truth_pairs": 300
+  },
+  "quality": {
+    "checks": 8,
+    "passed": 8
+  },
+  "schema_version": 2,
+  "seed": 360,
+  "silver": {
+    "accounts": 4927,
+    "customers": 2300,
+    "transactions": 50000
+  },
+  "version": 0,
+  "versions": [
+    {
+      "as_of": "2026-09-30",
+      "dir": "v0"
+    },
+    {
+      "as_of": "2026-10-31",
+      "dir": ""
+    }
+  ]
+}

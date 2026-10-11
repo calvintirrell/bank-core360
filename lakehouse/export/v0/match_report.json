@@ -1,0 +1,85 @@
+{
+  "as_of": "2026-09-30",
+  "auto_merged": 265,
+  "by_kind": {
+    "clean": {
+      "merged": 180,
+      "review": 0,
+      "unmatched": 0
+    },
+    "lastname_changed": {
+      "merged": 15,
+      "review": 0,
+      "unmatched": 0
+    },
+    "lastname_changed_ssn_missing": {
+      "merged": 0,
+      "review": 15,
+      "unmatched": 0
+    },
+    "lastname_changed_ssn_missing_moved_newphone": {
+      "merged": 0,
+      "review": 0,
+      "unmatched": 10
+    },
+    "middle_hyphen": {
+      "merged": 15,
+      "review": 0,
+      "unmatched": 0
+    },
+    "nickname": {
+      "merged": 30,
+      "review": 0,
+      "unmatched": 0
+    },
+    "ssn_missing": {
+      "merged": 10,
+      "review": 0,
+      "unmatched": 0
+    },
+    "ssn_missing_moved": {
+      "merged": 0,
+      "review": 10,
+      "unmatched": 0
+    },
+    "trap": {
+      "merged": 0,
+      "review": 0,
+      "unmatched": 5
+    },
+    "trap_review": {
+      "merged": 0,
+      "review": 2,
+      "unmatched": 0
+    },
+    "typo": {
+      "merged": 15,
+      "review": 0,
+      "unmatched": 0
+    }
+  },
+  "candidates_scored": 292,
+  "confirmed_by_reviewer": 0,
+  "false_negatives": 35,
+  "false_positives": 0,
+  "precision": 1.0,
+  "recall": 0.8833,
+  "rejected_by_reviewer": 0,
+  "review_queue": 27,
+  "thresholds": {
+    "auto_merge": 0.8,
+    "review_floor": 0.55
+  },
+  "tier_1_deterministic": 198,
+  "tier_2_fuzzy": 67,
+  "tier_3_confirmed": 0,
+  "traps_merged": 0,
+  "true_positives": 265,
+  "truth_pairs": 300,
+  "weights": {
+    "name": 0.4,
+    "phone": 0.15,
+    "postal_code": 0.15,
+    "ssn": 0.3
+  }
+}

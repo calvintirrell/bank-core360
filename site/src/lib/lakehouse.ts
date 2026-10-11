@@ -1,10 +1,35 @@
 import { dataUrl } from './duckdb'
 import type { Lineage } from './lineage'
 
+export type Changes = {
+  from_as_of: string
+  to_as_of: string
+  customers_before: number
+  customers_after: number
+  new_customers: number
+  customers_merged_by_reviewer: number
+  pairs_rejected_by_reviewer: number
+  review_queue_before: number
+  review_queue_after: number
+  address_changes: number
+  accounts_went_quiet: number
+  accounts_woke_up: number
+  new_accounts: number
+  transactions_in_new_month: number
+  deposits_before: number
+  deposits_after: number
+}
+
 export type Manifest = {
   schema_version: number
   seed: number
   as_of: string
+  version?: number
+  is_latest?: boolean
+  versions?: { as_of: string; dir: string }[]
+  delta_versions?: Record<string, number>
+  generator?: Record<string, number | string>
+  changes?: Changes
   bronze: Record<string, number>
   silver: Record<string, number>
   gold: Record<string, number>
@@ -50,30 +75,33 @@ export type ReplayEntry = { id: string; question: string; fingerprint: string; s
 export type Replay = { schema_version: number; questions: ReplayEntry[] }
 export type AgentTool = { name: string; description: string; input_schema: Record<string, unknown>; strict: boolean }
 
-async function loadJson<T>(file: string): Promise<T> {
-  const r = await fetch(dataUrl(file))
-  if (!r.ok) throw new Error(`${file}: HTTP ${r.status}`)
+async function loadJson<T>(file: string, dir = ''): Promise<T> {
+  const r = await fetch(dataUrl(file, dir))
+  if (!r.ok) throw new Error(`${dir}${file}: HTTP ${r.status}`)
   return (await r.json()) as T
 }
 
-export type Lakehouse = { lineage: Lineage; manifest: Manifest; matchReport: MatchReport; rawSamples: RawSamples }
+export type Lakehouse = { lineage: Lineage; manifest: Manifest; matchReport: MatchReport; rawSamples: RawSamples; changes: Changes | null; latest: Manifest }
 
-export async function loadLakehouse(): Promise<Lakehouse> {
-  const [lineage, manifest, matchReport, rawSamples] = await Promise.all([
-    loadJson<Lineage>('lineage.json'),
-    loadJson<Manifest>('manifest.json'),
-    loadJson<MatchReport>('match_report.json'),
+/** Loads the per-version files for `dir` ('' = latest, 'v0/' = first batch) plus the latest-only files. */
+export async function loadLakehouse(dir = ''): Promise<Lakehouse> {
+  const [lineage, manifest, matchReport, rawSamples, changes, latest] = await Promise.all([
+    loadJson<Lineage>('lineage.json', dir),
+    loadJson<Manifest>('manifest.json', dir),
+    loadJson<MatchReport>('match_report.json', dir),
     loadJson<RawSamples>('raw_samples.json'),
+    loadJson<Changes>('changes.json').catch(() => null),
+    dir ? loadJson<Manifest>('manifest.json') : Promise.resolve(null as unknown as Manifest),
   ])
-  return { lineage, manifest, matchReport, rawSamples }
+  return { lineage, manifest, matchReport, rawSamples, changes, latest: latest ?? manifest }
 }
 
 export function loadReplay(): Promise<Replay> {
   return loadJson<Replay>('replay.json')
 }
 
-export async function loadAgentPrompt(): Promise<string> {
-  const r = await fetch(dataUrl('agent_prompt.md'))
+export async function loadAgentPrompt(dir = ''): Promise<string> {
+  const r = await fetch(dataUrl('agent_prompt.md', dir))
   if (!r.ok) throw new Error(`agent_prompt.md: HTTP ${r.status}`)
   return r.text()
 }

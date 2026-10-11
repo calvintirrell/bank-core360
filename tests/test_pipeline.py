@@ -11,7 +11,7 @@ import duckdb
 import polars as pl
 import pytest
 
-from pipeline import AS_OF, EXPORT, ROOT, SILVER, TRUTH
+from pipeline import BATCHES, EXPORT, ROOT, SILVER, TRUTH, raw_dir
 from pipeline.delta import read_table
 from pipeline.lineage import LINEAGE
 
@@ -21,12 +21,32 @@ def run_pipeline() -> None:
     subprocess.run([sys.executable, "-m", "pipeline"], cwd=ROOT, check=True, capture_output=True)
 
 
+V0 = EXPORT / "v0"
+
+
 @pytest.fixture(scope="session")
 def con() -> duckdb.DuckDBPyConnection:
+    """Views over the latest export, plus *_v0 views over the first batch."""
     c = duckdb.connect()
     for t in ("customer_360", "account_360", "transactions", "review_queue"):
         c.execute(f"CREATE VIEW {t} AS SELECT * FROM read_parquet('{EXPORT / (t + '.parquet')}')")
+        c.execute(f"CREATE VIEW {t}_v0 AS SELECT * FROM read_parquet('{V0 / (t + '.parquet')}')")
     return c
+
+
+@pytest.fixture(scope="session")
+def manifest_v0() -> dict:
+    return json.loads((V0 / "manifest.json").read_text())
+
+
+@pytest.fixture(scope="session")
+def match_report_v0() -> dict:
+    return json.loads((V0 / "match_report.json").read_text())
+
+
+@pytest.fixture(scope="session")
+def changes() -> dict:
+    return json.loads((EXPORT / "changes.json").read_text())
 
 
 @pytest.fixture(scope="session")
@@ -42,12 +62,15 @@ def match_report() -> dict:
 # --- shape and integrity ------------------------------------------------------------------------
 
 
-def test_row_counts(con, manifest):
-    assert con.sql("SELECT count(*) FROM transactions").fetchone()[0] == 50_000
-    assert con.sql("SELECT count(*) FROM customer_360").fetchone()[0] == manifest["export"]["customer_360"]["rows"]
-    # 2,000 unique people + review-queue pairs that stay unmerged (one extra row each)
-    unmatched_true_pairs = manifest["match"]["truth_pairs"] - manifest["match"]["auto_merged"]
-    assert con.sql("SELECT count(*) FROM customer_360").fetchone()[0] == 2000 + unmatched_true_pairs
+def test_row_counts(con, manifest, manifest_v0):
+    assert con.sql("SELECT count(*) FROM transactions_v0").fetchone()[0] == 50_000
+    assert con.sql("SELECT count(*) FROM transactions").fetchone()[0] == manifest["generator"]["transactions"]
+    for m, view in ((manifest_v0, "customer_360_v0"), (manifest, "customer_360")):
+        n = con.sql(f"SELECT count(*) FROM {view}").fetchone()[0]
+        assert n == m["export"]["customer_360"]["rows"]
+        # unique people + true pairs that stay unmerged (one extra row each)
+        unmatched_true_pairs = m["match"]["truth_pairs"] - m["match"]["auto_merged"]
+        assert n == m["generator"]["unique_people"] + unmatched_true_pairs
 
 
 def test_no_orphan_accounts_or_transactions(con):
@@ -69,9 +92,9 @@ def test_customer_key_unique_and_source_ids_unique(con):
 
 def test_balances_reconcile_to_raw(con):
     raw_a = con.sql(
-        f"SELECT sum(CAST(CUR_BAL_CENTS AS BIGINT)) / 100.0 FROM read_csv('{ROOT}/lakehouse/raw/core_a/ACCTMAST.psv', delim='|', header=true, all_varchar=true)"
+        f"SELECT sum(CAST(CUR_BAL_CENTS AS BIGINT)) / 100.0 FROM read_csv('{raw_dir(BATCHES[-1]) / 'core_a' / 'ACCTMAST.psv'}', delim='|', header=true, all_varchar=true)"
     ).fetchone()[0]
-    raw_b = con.sql(f"SELECT sum(balance) FROM read_json('{ROOT}/lakehouse/raw/core_b/accounts.jsonl')").fetchone()[0]
+    raw_b = con.sql(f"SELECT sum(balance) FROM read_json('{raw_dir(BATCHES[-1]) / 'core_b' / 'accounts.jsonl'}')").fetchone()[0]
     silver = con.sql("SELECT sum(balance) FROM account_360").fetchone()[0]
     assert abs(silver - (raw_a + raw_b)) < 0.01
 
@@ -85,16 +108,37 @@ def test_transaction_sign_convention(con):
 # --- entity resolution --------------------------------------------------------------------------
 
 
-def test_match_quality_against_truth(match_report):
-    assert match_report["precision"] == 1.0, "no false merges allowed"
-    assert match_report["recall"] >= 0.85  # 10 overlap pairs are designed to be undetectable
-    assert match_report["traps_merged"] == 0
-    assert match_report["tier_1_deterministic"] > match_report["tier_2_fuzzy"] > 0
-    assert match_report["review_queue"] > 0
+@pytest.mark.parametrize("which", ["v0", "latest"])
+def test_match_quality_against_truth(which, match_report, match_report_v0):
+    r = match_report_v0 if which == "v0" else match_report
+    assert r["precision"] == 1.0, "no false merges allowed"
+    assert r["recall"] >= 0.85  # 10 overlap pairs are designed to be undetectable
+    assert r["traps_merged"] == 0
+    assert r["tier_1_deterministic"] > r["tier_2_fuzzy"] > 0
+    assert r["review_queue"] > 0
 
 
-def test_each_overlap_kind_lands_where_designed(match_report):
-    k = match_report["by_kind"]
+def test_reviewer_decisions_apply_only_from_batch_two(match_report, match_report_v0, changes):
+    assert match_report_v0["confirmed_by_reviewer"] == 0 and match_report_v0["tier_3_confirmed"] == 0
+    assert match_report["confirmed_by_reviewer"] == 5 and match_report["tier_3_confirmed"] == 5
+    assert match_report["rejected_by_reviewer"] == 2
+    assert match_report["auto_merged"] == match_report_v0["auto_merged"] + 5
+    assert match_report["by_kind"]["trap_review"]["unmatched"] == 2
+    assert match_report_v0["by_kind"]["trap_review"]["review"] == 2
+    assert changes["customers_merged_by_reviewer"] == 5 and changes["pairs_rejected_by_reviewer"] == 2
+
+
+def test_changes_between_batches_are_sane(changes):
+    assert changes["new_customers"] == 40
+    assert changes["customers_after"] == changes["customers_before"] + 40 - 5
+    assert 10 <= changes["address_changes"] <= 25
+    assert changes["accounts_woke_up"] >= 8
+    assert changes["accounts_went_quiet"] >= 12
+    assert changes["transactions_in_new_month"] > 3000
+
+
+def test_each_overlap_kind_lands_where_designed(match_report_v0):
+    k = match_report_v0["by_kind"]
     assert k["clean"]["merged"] == 180
     assert k["nickname"]["merged"] == 30
     assert k["middle_hyphen"]["merged"] == 15
@@ -108,12 +152,14 @@ def test_each_overlap_kind_lands_where_designed(match_report):
     assert k["lastname_changed_ssn_missing_moved_newphone"]["unmatched"] == 10
 
 
-def test_merged_customers_have_both_ids(con):
+def test_merged_customers_have_both_ids(con, manifest):
     bad = con.sql(
         "SELECT count(*) FROM customer_360 WHERE source_systems='core_a+core_b' AND (core_a_cif IS NULL OR core_b_customer_id IS NULL OR match_confidence IS NULL)"
     ).fetchone()[0]
     assert bad == 0
-    assert con.sql("SELECT count(*) FROM customer_360 WHERE source_systems='core_a+core_b'").fetchone()[0] == 265
+    assert (
+        con.sql("SELECT count(*) FROM customer_360 WHERE source_systems='core_a+core_b'").fetchone()[0] == manifest["match"]["auto_merged"]
+    )
 
 
 # --- business rules -----------------------------------------------------------------------------
@@ -125,7 +171,7 @@ def test_dormancy_matches_generator_truth(con):
     flagged = {
         ("A" if s == "core_a" else "B", i)
         for s, i in con.sql(
-            "SELECT source_system, source_account_id FROM account_360 WHERE is_dormant_180d AND product_type='checking'"
+            "SELECT source_system, source_account_id FROM account_360_v0 WHERE is_dormant_180d AND product_type='checking'"
         ).fetchall()
     }
     # every designed-dormant account is flagged; a handful more may be dormant by chance
@@ -150,8 +196,19 @@ def test_gate_question_mortgage_and_dormant_checking(con):
 
 def test_as_of_consistent_with_generator():
     from data.generators.common import AS_OF as GEN_AS_OF
+    from data.generators.common import AS_OF_2 as GEN_AS_OF_2
 
-    assert GEN_AS_OF == AS_OF
+    assert [GEN_AS_OF, GEN_AS_OF_2] == BATCHES
+
+
+def test_customer_keys_are_stable_across_batches(con):
+    # every key present in both versions refers to the same Core A cif / Core B id
+    bad = con.sql(
+        """SELECT count(*) FROM customer_360_v0 a JOIN customer_360 b USING (customer_key)
+           WHERE coalesce(a.core_a_cif, '') != coalesce(b.core_a_cif, '')
+              OR (a.core_b_customer_id IS NOT NULL AND b.core_b_customer_id IS NOT NULL AND a.core_b_customer_id != b.core_b_customer_id)"""
+    ).fetchone()[0]
+    assert bad == 0
 
 
 def test_review_queue_is_unmerged_pairs(con, match_report):
@@ -159,6 +216,7 @@ def test_review_queue_is_unmerged_pairs(con, match_report):
     assert n == match_report["review_queue"] > 0
     assert con.sql("SELECT count(*) FROM review_queue WHERE core_a_customer_key = core_b_customer_key").fetchone()[0] == 0
     assert con.sql("SELECT count(*) FROM review_queue WHERE confidence < 0.55 OR confidence >= 0.80").fetchone()[0] == 0
+    assert con.sql("SELECT count(*) FROM review_queue_v0").fetchone()[0] == match_report["review_queue"] + 5 + 2
     assert con.sql(
         "SELECT list(priority ORDER BY priority) = list(priority ORDER BY combined_balance DESC, confidence DESC) FROM review_queue"
     ).fetchone()[0]

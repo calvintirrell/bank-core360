@@ -79,6 +79,17 @@ ORDER BY priority
 LIMIT 25`,
   },
   {
+    label: 'Time travel: what changed',
+    sql: `SELECT 'customers' AS what, (SELECT count(*) FROM customer_360_v0) AS first_load, (SELECT count(*) FROM customer_360_latest) AS now
+UNION ALL SELECT 'in review queue', (SELECT count(*) FROM review_queue_v0), (SELECT count(*) FROM review_queue_latest)
+UNION ALL SELECT 'quiet checking accounts',
+  (SELECT count(*) FROM account_360_v0 WHERE product_type='checking' AND is_dormant_180d),
+  (SELECT count(*) FROM account_360_latest WHERE product_type='checking' AND is_dormant_180d)
+UNION ALL SELECT 'confirmed by a reviewer',
+  (SELECT count(*) FROM customer_360_v0 WHERE match_tier = 3),
+  (SELECT count(*) FROM customer_360_latest WHERE match_tier = 3)`,
+  },
+  {
     label: 'One customer, both cores',
     sql: `SELECT a.customer_key, c.full_name, a.source_system, a.product_type,
        a.balance, a.is_open, a.last_txn_ts, a.is_dormant_180d

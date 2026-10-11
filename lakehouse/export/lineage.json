@@ -1,5 +1,5 @@
 {
-  "as_of": "2026-09-30",
+  "as_of": "2026-10-31",
   "systems": {
     "core_a": {
       "plain": "Harbor Bank's system",
@@ -35,14 +35,15 @@
     "ER-04": "Tier 2 fuzzy: 0.40*name similarity (token-set ratio) + 0.30*ssn (1 equal / 0.5 missing) + 0.15*phone + 0.15*postal code; auto-merge >= 0.80",
     "ER-05": "Review queue: 0.55 <= confidence < 0.80, not merged",
     "ER-06": "Greedy one-to-one assignment by descending confidence",
-    "ER-07": "customer_key surrogate: Core A records in CIF order, then unmatched Core B in id order",
+    "ER-07": "customer_key surrogate: C + 7 digits hashed from the source id, stable across batches; a merged pair takes the Core A key",
+    "ER-08": "Reviewer decisions: a confirmed pair merges as tier 3 (confidence 1.0); a rejected pair never merges; only decisions dated on or before the batch as-of apply",
     "G-01": "Survivorship: contact/name fields prefer Core B (newer system) when present in both",
     "G-02": "customer_since = earliest relationship date across cores",
     "G-03": "is_active = active in any core",
     "G-04": "source_systems = which cores contributed to this customer",
     "G-05": "deposit_balance = sum of open deposit-category balances",
     "G-06": "loan_balance = sum of open loan-category balances",
-    "G-10": "is_dormant_180d = open account with zero transactions in the 180 days before 2026-09-30",
+    "G-10": "is_dormant_180d = open account with zero transactions in the 180 days before the as-of date",
     "G-11": "checking_dormant_180d = any open checking account dormant per G-10",
     "G-20": "review_queue = candidate pairs scored 0.55-0.80 (ER-05), not merged; each side remains its own customer_360 row; priority = rank by combined balance"
   },
@@ -377,7 +378,7 @@
             "ER-03",
             "ER-04"
           ],
-          "plain": "How the two banks' records were linked: 1 means an exact match on name and SSN digits, 2 means a close match scored by similarity."
+          "plain": "How the two banks' records were linked: 1 means an exact match on name and SSN digits, 2 means a close match scored by similarity, 3 means a person reviewed the pair and confirmed it."
         },
         "match_confidence": {
           "sources": [

@@ -29,30 +29,59 @@ export function getDb(): Promise<duckdb.AsyncDuckDB> {
   return dbPromise
 }
 
-/** Absolute URL for a file in the export layer, honoring the Pages base path. */
-export function dataUrl(file: string): string {
-  return new URL(`${import.meta.env.BASE_URL}data/${file}`, window.location.origin).href
+/** Absolute URL for a file in the export layer (or a version subfolder), honoring the Pages base path. */
+export function dataUrl(file: string, dir = ''): string {
+  return new URL(`${import.meta.env.BASE_URL}data/${dir}${file}`, window.location.origin).href
 }
 
-/** Registers the gold Parquet files served by Pages and exposes them as plain view names. */
+/** Versions to expose: '' is the latest export, 'v0/' the first batch. Set by the app before ready(). */
+const VERSION_DIRS: Record<string, string> = { latest: '', v0: 'v0/' }
+let selected = 'latest'
+
+/** Registers every version's Parquet files and creates the views. `customer_360` etc. follow the
+ *  selected version; `customer_360_v0` / `customer_360_latest` are always available for comparison. */
 export function ready(): Promise<void> {
   if (!readyPromise) {
     readyPromise = (async () => {
       const db = await getDb()
-      for (const t of TABLES) {
-        await db.registerFileURL(`${t}.parquet`, dataUrl(`${t}.parquet`), duckdb.DuckDBDataProtocol.HTTP, false)
+      for (const [v, dir] of Object.entries(VERSION_DIRS)) {
+        for (const t of TABLES) {
+          await db.registerFileURL(`${t}_${v}.parquet`, dataUrl(`${t}.parquet`, dir), duckdb.DuckDBDataProtocol.HTTP, false)
+        }
       }
       const conn = await db.connect()
       try {
-        for (const t of TABLES) {
-          await conn.query(`CREATE OR REPLACE VIEW ${t} AS SELECT * FROM read_parquet('${t}.parquet')`)
+        for (const v of Object.keys(VERSION_DIRS)) {
+          for (const t of TABLES) {
+            await conn.query(`CREATE OR REPLACE VIEW ${t}_${v} AS SELECT * FROM read_parquet('${t}_${v}.parquet')`)
+          }
         }
+        await pointViews(conn, selected)
       } finally {
         await conn.close()
       }
     })()
   }
   return readyPromise
+}
+
+async function pointViews(conn: duckdb.AsyncDuckDBConnection, v: string): Promise<void> {
+  for (const t of TABLES) {
+    await conn.query(`CREATE OR REPLACE VIEW ${t} AS SELECT * FROM ${t}_${v}`)
+  }
+}
+
+/** Switches the unsuffixed views to another version. Resolves once the views are re-pointed. */
+export async function selectVersion(v: string): Promise<void> {
+  selected = v
+  await ready()
+  const db = await getDb()
+  const conn = await db.connect()
+  try {
+    await pointViews(conn, v)
+  } finally {
+    await conn.close()
+  }
 }
 
 function kindOf(f: Field): ColumnKind {

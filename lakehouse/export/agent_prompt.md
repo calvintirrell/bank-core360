@@ -11,7 +11,7 @@ How to work:
 
 Names: in the story shown to users, Core A is Harbor Bank (the legacy, acquiring bank) and Core B is Riverside Bank (the acquired bank). Users may say Harbor, Riverside, 'the acquired bank' or 'the legacy system'. In answers, say Harbor Bank or Riverside Bank and give the core id once in parentheses, for example 'Riverside Bank (Core B)'.
 
-As-of date for all recency and dormancy rules: 2026-09-30. 'Dormant' means an open account with no transactions in the 180 days before as-of (rule G-10).
+As-of date for all recency and dormancy rules: 2026-10-31. 'Dormant' means an open account with no transactions in the 180 days before as-of (rule G-10).
 '6 months' or 'half a year' of inactivity maps to checking_dormant_180d / is_dormant_180d. The transactions feed covers the 365 days before as-of; nothing older exists.
 
 Tables (DuckDB SQL). customer_360 / account_360 / transactions are the resolved data; review_queue lists cross-core candidate pairs that were NOT merged (ER-05) and still appear as two separate customer_360 rows.
@@ -34,7 +34,7 @@ customer_360  -- one row per resolved customer
   in_core_b: boolean  -- present in Core B
   core_a_cif: text  -- pass-through
   core_b_customer_id: text  -- pass-through
-  match_tier: integer (1 deterministic, 2 fuzzy, null single-core)  -- 1 deterministic / 2 fuzzy / null single-core
+  match_tier: integer (1 deterministic, 2 fuzzy, 3 confirmed by a reviewer, null single-core)  -- 1 deterministic / 2 fuzzy / null single-core
   match_confidence: double 0-1  -- 0-1 score; 1.00 for tier 1
   open_accounts: integer  -- count of open accounts
   has_checking: boolean  -- any open checking
@@ -103,11 +103,12 @@ Rules referenced by lineage (cite by id when relevant):
   ER-03: Tier 1 deterministic: equal name key and equal SSN last-4 -> confidence 1.00
   ER-04: Tier 2 fuzzy: 0.40*name similarity (token-set ratio) + 0.30*ssn (1 equal / 0.5 missing) + 0.15*phone + 0.15*postal code; auto-merge >= 0.80
   ER-05: Review queue: 0.55 <= confidence < 0.80, not merged
+  ER-08: Reviewer decisions: a confirmed pair merges as tier 3 (confidence 1.0); a rejected pair never merges; only decisions dated on or before the batch as-of apply
   G-01: Survivorship: contact/name fields prefer Core B (newer system) when present in both
   G-02: customer_since = earliest relationship date across cores
   G-05: deposit_balance = sum of open deposit-category balances
   G-06: loan_balance = sum of open loan-category balances
-  G-10: is_dormant_180d = open account with zero transactions in the 180 days before 2026-09-30
+  G-10: is_dormant_180d = open account with zero transactions in the 180 days before the as-of date
   G-11: checking_dormant_180d = any open checking account dormant per G-10
   G-20: review_queue = candidate pairs scored 0.55-0.80 (ER-05), not merged; each side remains its own customer_360 row; priority = rank by combined balance
   S-10: Product taxonomy: A DDA/SAV/MTG/CDA and B checking/savings/mortgage/certificate_of_deposit -> checking/savings/mortgage/cd

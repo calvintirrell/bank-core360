@@ -15,6 +15,8 @@ import { SqlConsole } from './components/SqlConsole'
 import { Tour, TourOffer } from './components/Tour'
 import { loadLakehouse, type Lakehouse } from './lib/lakehouse'
 import { ModeProvider, useBankMode } from './lib/ModeContext'
+import { AsOfProvider, useAsOf, versionDir } from './lib/AsOfContext'
+import { selectVersion } from './lib/duckdb'
 
 const NAV_BANK = [
   ['#ask', 'Ask'],
@@ -38,19 +40,34 @@ const NAV_TECH = [
 export default function App() {
   return (
     <ModeProvider>
-      <Shell />
+      <AsOfProvider>
+        <Shell />
+      </AsOfProvider>
     </ModeProvider>
   )
 }
 
 function Shell() {
   const bank = useBankMode()
+  const { version } = useAsOf()
   const [lh, setLh] = useState<Lakehouse | null>(null)
   const [error, setError] = useState('')
   const [tour, setTour] = useState(false)
+  const [ready, setReady] = useState(0)
   useEffect(() => {
-    loadLakehouse().then(setLh).catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
-  }, [])
+    let cancelled = false
+    setLh(null)
+    Promise.all([loadLakehouse(versionDir(version)), selectVersion(version)])
+      .then(([data]) => {
+        if (cancelled) return
+        setLh(data)
+        setReady((n) => n + 1)
+      })
+      .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
+    return () => {
+      cancelled = true
+    }
+  }, [version])
   const nav = bank ? NAV_BANK : NAV_TECH
 
   return (
@@ -72,10 +89,10 @@ function Shell() {
       <main className="mx-auto max-w-6xl space-y-12 px-4 py-8">
         {error && <pre className="rounded-md bg-red-50 p-3 text-xs text-red-700">Could not load the lakehouse exports: {error}</pre>}
         {bank && !tour && <TourOffer onStart={() => setTour(true)} />}
-        <Hero manifest={lh?.manifest ?? null} report={lh?.matchReport ?? null} />
-        <AgentPanel lineage={lh?.lineage ?? null} />
-        <Customer360 lineage={lh?.lineage ?? null} />
-        {bank ? <Decisions report={lh?.matchReport ?? null} /> : <MatchReport report={lh?.matchReport ?? null} />}
+        <Hero manifest={lh?.manifest ?? null} report={lh?.matchReport ?? null} changes={lh?.changes ?? null} latest={lh?.latest ?? null} />
+        <AgentPanel key={`ask-${ready}`} lineage={lh?.lineage ?? null} />
+        <Customer360 key={`c360-${ready}`} lineage={lh?.lineage ?? null} />
+        {bank ? <Decisions key={`dec-${ready}`} report={lh?.matchReport ?? null} /> : <MatchReport key={`mr-${ready}`} report={lh?.matchReport ?? null} />}
         <QualityPanel />
         <Collapsible
           id="sql"
@@ -83,7 +100,7 @@ function Shell() {
           teaser="Every answer on this page is a query over the same tables. Analysts can write their own here, in the browser."
           defaultOpen={!bank}
         >
-          <SqlConsole lineage={lh?.lineage ?? null} embedded />
+          <SqlConsole key={`sql-${ready}`} lineage={lh?.lineage ?? null} embedded />
         </Collapsible>
         <Collapsible
           id="cores"

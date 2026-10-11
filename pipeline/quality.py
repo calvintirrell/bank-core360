@@ -8,7 +8,7 @@ import json
 
 import duckdb
 
-from pipeline import AS_OF, DORMANT_DAYS, EXPORT, RAW
+from pipeline import DORMANT_DAYS, get_as_of, raw_dir, version_dir
 from pipeline.lineage import LINEAGE
 
 
@@ -18,18 +18,20 @@ class QualityError(RuntimeError):
 
 def _con() -> duckdb.DuckDBPyConnection:
     con = duckdb.connect()
+    out = version_dir()
     for t in ("customer_360", "account_360", "transactions", "review_queue"):
-        con.execute(f"CREATE VIEW {t} AS SELECT * FROM read_parquet('{EXPORT / (t + '.parquet')}')")
+        con.execute(f"CREATE VIEW {t} AS SELECT * FROM read_parquet('{out / (t + '.parquet')}')")
     con.execute(
-        f"CREATE VIEW raw_a_accounts AS SELECT * FROM read_csv('{RAW / 'core_a' / 'ACCTMAST.psv'}', delim='|', header=true, all_varchar=true)"
+        f"CREATE VIEW raw_a_accounts AS SELECT * FROM read_csv('{raw_dir() / 'core_a' / 'ACCTMAST.psv'}', delim='|', header=true, all_varchar=true)"
     )
-    con.execute(f"CREATE VIEW raw_b_accounts AS SELECT * FROM read_json('{RAW / 'core_b' / 'accounts.jsonl'}')")
+    con.execute(f"CREATE VIEW raw_b_accounts AS SELECT * FROM read_json('{raw_dir() / 'core_b' / 'accounts.jsonl'}')")
     return con
 
 
 def run() -> list[dict]:
     con = _con()
-    match = json.loads((EXPORT / "match_report.json").read_text())
+    as_of = get_as_of()
+    match = json.loads((version_dir() / "match_report.json").read_text())
     checks: list[dict] = []
 
     def check(cid: str, title: str, plain: str, sql: str | None, value, expected, passed: bool, detail: str = "") -> None:
@@ -120,12 +122,12 @@ def run() -> list[dict]:
     )
 
     # Q-07 transactions within the feed window
-    sql = f"SELECT count(*), min(txn_ts), max(txn_ts) FROM transactions WHERE txn_ts < TIMESTAMP '{AS_OF.isoformat()}' - INTERVAL 365 DAY OR txn_ts > TIMESTAMP '{AS_OF.isoformat()}' + INTERVAL 1 DAY"
+    sql = f"SELECT count(*), min(txn_ts), max(txn_ts) FROM transactions WHERE txn_ts < TIMESTAMP '{as_of.isoformat()}' - INTERVAL 365 DAY OR txn_ts > TIMESTAMP '{as_of.isoformat()}' + INTERVAL 1 DAY"
     n = con.execute(sql).fetchone()[0]
     check(
         "Q-07",
         "Transactions fall inside the year of data",
-        f"All transactions are dated within the 365 days before the as-of date, {AS_OF.isoformat()}.",
+        f"All transactions are dated within the 365 days before the as-of date, {as_of.isoformat()}.",
         sql,
         n,
         0,
@@ -145,8 +147,8 @@ def run() -> list[dict]:
         n == 0,
     )
 
-    payload = {"as_of": AS_OF.isoformat(), "passed": all(c["passed"] for c in checks), "checks": checks}
-    (EXPORT / "quality.json").write_text(json.dumps(payload, indent=1, default=str) + "\n")
+    payload = {"as_of": as_of.isoformat(), "passed": all(c["passed"] for c in checks), "checks": checks}
+    (version_dir() / "quality.json").write_text(json.dumps(payload, indent=1, default=str) + "\n")
     failed = [c["id"] for c in checks if not c["passed"]]
     if failed:
         raise QualityError(f"data quality checks failed: {failed}")

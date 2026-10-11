@@ -1,4 +1,5 @@
-import type { Manifest, MatchReport } from '../lib/lakehouse'
+import type { Changes, Manifest, MatchReport } from '../lib/lakehouse'
+import { useAsOf } from '../lib/AsOfContext'
 import { useBankMode } from '../lib/ModeContext'
 import { Stat } from './Section'
 import { Term } from './Term'
@@ -6,8 +7,10 @@ import { Term } from './Term'
 const fmtDate = (iso?: string) =>
   iso ? new Date(iso + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : '…'
 
-export function Hero({ manifest, report }: { manifest: Manifest | null; report: MatchReport | null }) {
+export function Hero({ manifest, report, changes, latest }: { manifest: Manifest | null; report: MatchReport | null; changes: Changes | null; latest: Manifest | null }) {
   const bank = useBankMode()
+  const { version, setVersion } = useAsOf()
+  const money = (v: number) => `$${(v / 1e6).toFixed(1)}M`
   const customers = manifest?.export.customer_360.rows
   const sourceRecords = manifest ? manifest.bronze.core_a_custmast + manifest.bronze.core_b_customers : undefined
   const n = (v?: number) => v?.toLocaleString() ?? '…'
@@ -31,6 +34,25 @@ export function Hero({ manifest, report }: { manifest: Manifest | null; report: 
           runs free on GitHub Pages. All data is synthetic.
         </p>
       )}
+      {latest?.versions && latest.versions.length > 1 && (
+        <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
+          <span className="text-slate-600">{bank ? 'See the bank as of' : 'As of'}</span>
+          <div className="flex items-center gap-1 rounded-full border border-slate-200 bg-white p-0.5">
+            {latest.versions.map((v, i) => {
+              const id = i === latest.versions!.length - 1 ? 'latest' : (`v${i}` as const)
+              const on = version === id
+              return (
+                <button key={v.as_of} type="button" onClick={() => setVersion(id)} aria-pressed={on} className={`rounded-full px-3 py-1 text-xs font-medium ${on ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'}`}>
+                  {fmtDate(v.as_of)}
+                </button>
+              )
+            })}
+          </div>
+          {!bank && manifest?.delta_versions && (
+            <span className="text-xs text-slate-500">Delta version {Object.values(manifest.delta_versions)[0]} of every table · time travel via the *_v0 / *_latest views</span>
+          )}
+        </div>
+      )}
       <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {bank ? (
           <>
@@ -52,6 +74,26 @@ export function Hero({ manifest, report }: { manifest: Manifest | null; report: 
           </>
         )}
       </div>
+      {changes && version === 'latest' && (
+        <div className="mt-4 rounded-xl border border-violet-200 bg-violet-50 p-4 text-sm">
+          <div className="mb-1 text-xs uppercase tracking-wide text-violet-800">What changed since {fmtDate(changes.from_as_of)}</div>
+          <ul className="grid gap-x-6 gap-y-1 sm:grid-cols-2 lg:grid-cols-3 text-slate-800">
+            <li><b>{changes.new_customers}</b> new customers joined, bringing {changes.new_accounts} new accounts.</li>
+            <li><b>{changes.customers_merged_by_reviewer}</b> possible duplicates were confirmed by a reviewer and merged; <b>{changes.pairs_rejected_by_reviewer}</b> were rejected as different people.</li>
+            <li>The review queue went from {changes.review_queue_before} to <b>{changes.review_queue_after}</b>.</li>
+            <li><b>{changes.accounts_went_quiet}</b> accounts went quiet and <b>{changes.accounts_woke_up}</b> woke up.</li>
+            <li><b>{changes.address_changes}</b> customers changed address.</li>
+            <li>{changes.transactions_in_new_month.toLocaleString()} transactions in the new month; deposits {money(changes.deposits_before)} → <b>{money(changes.deposits_after)}</b>.</li>
+          </ul>
+          <button type="button" onClick={() => setVersion('v0')} className="mt-2 text-xs text-violet-800 underline">See the page as it was on {fmtDate(changes.from_as_of)}</button>
+        </div>
+      )}
+      {version !== 'latest' && (
+        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          You are looking at the bank as of {fmtDate(manifest?.as_of)}: the first load, before the second month arrived. Every table, answer and check on this page is from that version.
+          <button type="button" onClick={() => setVersion('latest')} className="ml-2 underline">Back to today</button>
+        </div>
+      )}
     </section>
   )
 }
