@@ -32,16 +32,50 @@ This demo is the first release I would ship for them, built end to end so the tr
 2. **Numbers nobody can defend.** Every column in the gold layer maps back to its source core, source field, and the transform rule that produced it. On the page, every result column carries a badge: A, B, or A+B. Click it and the lineage card shows the fields and rules.
 3. **Questions that wait in the ticket queue.** Ask in plain English. A Claude agent writes the SQL, runs it in the browser, and explains the answer with caveats that cite the rules. The SQL is shown, not hidden, so an analyst can take it and keep going.
 
-## What you can do on the page
+## Guide to the page
 
-- Ask a question, first thing on the page, in a banker's words. Seven are cached and always work. Live questions run through a small shared proxy with a daily cap, or through your own Anthropic key by adding `?byok` to the URL. Answers lead with a sentence and a headline figure; the query and rows fold under "Show how this was worked out," and each answer suggests what to ask next.
-- See the customers as people, one card each, with what they hold in words. In the technical view the same list is a filterable table. Click a person to see their accounts at each bank.
-- Read the matching as decisions: how many were merged automatically, how many were held for a person, how many wrong merges against the answer key, with a worked example from the review queue. The technical view keeps the full scorecard.
-- Run your own SQL in the console. DuckDB-WASM executes it in your browser against the gold Parquet. Nothing leaves the page.
-- See what the bank handed over as six side-by-side mismatches from real rows, or open the raw files themselves, and the architecture that turns them into one table.
-- Switch the whole page between two dates. The first load is Sep 30; a second month arrived on Oct 31 with new customers, address changes, accounts going quiet or waking up, and a reviewer's decisions on the duplicate queue. Every Delta table carries both as versions, a "What changed" card summarises the month, and the technical view can query `customer_360_v0` against `customer_360_latest` side by side.
-- Read the data-quality checks the build ran: balances reconcile to the files to the cent, no orphan accounts or transactions, nobody listed twice, every column traceable, no wrong merges, transactions inside the feed window, the quiet flag consistent. The pipeline refuses to publish if any fails.
-- Open "Why this matters" under any section for the product view: the problem, the decision it supports, and one trade-off.
+Everything below is on one page at the live link. Nothing to install, no account needed. The guide is written for the default "I run the bank" view; the technical view adds detail and is noted where it differs.
+
+### Quick reference
+
+| Feature | Where | What it does | How to use it |
+|---|---|---|---|
+| View switch | Top right | Chooses how much detail you see. "I run the bank" hides queries and raw data; "I build the data" shows everything. | Click either button. The choice is remembered. `?mode=bank` or `?mode=tech` on the link opens a view directly. |
+| Show me around | Top right, and a banner on first visit | A 60-second tour in five stops: the problem, asking, the answer, one person not two records, who should check what. | Click it. Next, Back, Skip. A saved answer is shown at stop three at no cost. |
+| As-of switch | Under the headline | Shows the whole page as of Sep 30, 2026 (the first load) or Oct 31, 2026 (one month later). Every table, answer and check follows the date. | Click a date. "What changed" summarises the month; "Back to today" returns. `?asof=v0` on the link opens the earlier version. |
+| Stat tiles | Under the headline | The headline numbers: records arrived, real people after duplicates were resolved, people in both banks, accounts, transactions, the as-of date. | Read them. In the technical view the labels are the technical names. |
+| Ask in plain English | First section | Ask a question about customers, accounts or transactions in ordinary words. You get the answer in a sentence or two, often with a headline number or small chart, plus suggested next questions. | Click one of the seven ready questions, or type your own and press Enter. "Show how this was worked out" opens the query and the rows behind the answer. |
+| Daily limit | Ask section | The shared demo allows 8 questions a day for everyone combined. Saved answers for the seven ready questions always work. | When the limit is reached a red note appears; the ready questions still answer from the cache. With your own Anthropic key (`?byok` on the link) there is no limit. |
+| Settings (gear) | Ask section, bank view | Model choice, "cached answers only", and the counter of questions left today. | Click the gear. Default model is Claude Opus 5.5. |
+| The customers, one person each | Second section | Every real person as a card: which bank they came from, what they hold, deposits and loans, a red line if a checking account has gone quiet, and how confidently they were matched. | Use the filters (Everyone, In both banks, Matched by similarity, Mortgage and a quiet checking account, Harbor only, Riverside only) or search a name. Click a card for their accounts at each bank. Technical view: a sortable table with the same filters. |
+| Are these the same person? | Third section | How the two banks' customer lists were matched: how many merged automatically, how many were held for a person, how many wrong merges against the answer key, with a worked example from the review queue and the rules in plain words. | Read it. Technical view: tiers, precision and recall, outcome by designed difficulty, and the scoring formula. |
+| Can these numbers be trusted? | Fourth section | The eight checks the build ran, from "balances add up to the files the banks sent" to "'quiet' means what it says". The pipeline refuses to publish if any fails. | Read the green checks. Technical view: values, expected results and the SQL for each. |
+| For analysts: run your own SQL | Collapsed section | A SQL console over the same four tables the answers use, run entirely in your browser. | Click Show. Pick an example or write a query, then Run or Cmd+Enter. Add `_v0` or `_latest` to a table name to pin a version, for example `customer_360_v0`. |
+| Lineage badges | On every result column | Each column carries A, B or A+B for which bank's system it came from, or "derived" if the query computed it. | Click a badge for the sentence: which system, which field, what was done to it. Technical view adds the rule ids. |
+| What the bank handed us | Collapsed section | The same facts written two different ways by the two banks, from real rows: a birthday, an id, a product code, a balance in cents versus dollars, a name, a signed amount. | Click Show. "See the raw files" opens the actual first rows of all six files. |
+| How it's built | Collapsed section | The pipeline from raw feeds to the page, with the Iceberg mirror listed in the technical view. For engineers. | Click Show. |
+| Why this matters | Under each section | The product view: the problem, the decision the section supports, one trade-off. | Click to expand. |
+| Glossary | Underlined words | Short definitions in bank language for core banking system, matching, review queue, quiet account, where a number came from, as-of date. | Hover, tap or focus an underlined term. |
+
+### Asking good questions
+
+The agent can see four tables: one row per person, one row per account, every transaction for the year, and the review queue of unmerged possible duplicates. It knows the story names (Harbor Bank is the legacy core, Riverside Bank the acquired one), the as-of date, and that "quiet" or "dormant" means no transactions for 180 days. Questions that work well:
+
+- Counts and totals by any grouping: by bank, state, product, month.
+- Lists of people or accounts that meet conditions: "mortgage customers whose checking has gone quiet", "Riverside customers with a mortgage above $400,000".
+- Comparisons between the two banks or between the two dates.
+- Questions about the matching itself: how sure we are, which pairs to review first.
+
+It cannot answer anything outside those tables, and it will say so. Every answer shows its query, so an analyst can take it further in the console.
+
+### What happens behind a question
+
+1. Your question goes to Claude with a description of the four tables generated from the lineage file.
+2. Claude writes one SQL query and calls a `run_sql` tool. The query runs in DuckDB-WASM in your browser against the Parquet files on this site; nothing leaves the page except the question and the result rows sent back to the model.
+3. Claude reads the rows and writes the answer, with caveats that cite the rules it relied on, and suggests follow-up questions.
+4. The page shows the answer first, and the query and rows under "Show how this was worked out".
+
+A question normally costs two API calls. The seven ready questions are also cached, so they work even when the daily limit is reached.
 
 ## How it works
 
