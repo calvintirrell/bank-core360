@@ -9,7 +9,7 @@ import time
 
 import polars as pl
 
-from pipeline import AS_OF, EXPORT, GOLD, SEED, SILVER, agent_prompt, bronze, gold, lineage, match, replay, silver
+from pipeline import AS_OF, EXPORT, GOLD, SEED, SILVER, agent_prompt, bronze, gold, lineage, match, quality, replay, silver
 from pipeline.delta import read_table
 
 
@@ -64,6 +64,7 @@ def main() -> int:
     e = export()
     (EXPORT / "raw_samples.json").write_text(json.dumps(raw_samples(), indent=1) + "\n")
     agent_prompt.write()
+    q = quality.run()
     r = replay.write()
     manifest = {
         "schema_version": 1,
@@ -74,6 +75,7 @@ def main() -> int:
         "gold": g,
         "export": e,
         "replay": r,
+        "quality": {"checks": len(q), "passed": sum(1 for c in q if c["passed"])},
         "match": {
             k: m[k]
             for k in (

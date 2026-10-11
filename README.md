@@ -39,6 +39,7 @@ This demo is the first release I would ship for them, built end to end so the tr
 - Read the matching as decisions: how many were merged automatically, how many were held for a person, how many wrong merges against the answer key, with a worked example from the review queue. The technical view keeps the full scorecard.
 - Run your own SQL in the console. DuckDB-WASM executes it in your browser against the gold Parquet. Nothing leaves the page.
 - See what the bank handed over as six side-by-side mismatches from real rows, or open the raw files themselves, and the architecture that turns them into one table.
+- Read the data-quality checks the build ran: balances reconcile to the files to the cent, no orphan accounts or transactions, nobody listed twice, every column traceable, no wrong merges, transactions inside the feed window, the quiet flag consistent. The pipeline refuses to publish if any fails.
 - Open "Why this matters" under any section for the product view: the problem, the decision it supports, and one trade-off.
 
 ## How it works

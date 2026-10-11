@@ -175,6 +175,15 @@ def test_emails_match_surnames(con):
     assert con.sql("SELECT count(*) FROM customer_360 WHERE source_systems = 'core_a' AND email IS NOT NULL").fetchone()[0] == 0
 
 
+def test_quality_checks_all_pass():
+    q = json.loads((EXPORT / "quality.json").read_text())
+    assert q["passed"] is True
+    assert len(q["checks"]) >= 8
+    for c in q["checks"]:
+        assert c["passed"], c["id"]
+        assert c["plain"].endswith(".")
+
+
 # --- lineage ------------------------------------------------------------------------------------
 
 

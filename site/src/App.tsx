@@ -10,6 +10,7 @@ import { Footer } from './components/Footer'
 import { Hero } from './components/Hero'
 import { MatchReport } from './components/MatchReport'
 import { ModeToggle } from './components/ModeToggle'
+import { QualityPanel } from './components/Quality'
 import { SqlConsole } from './components/SqlConsole'
 import { Tour, TourOffer } from './components/Tour'
 import { loadLakehouse, type Lakehouse } from './lib/lakehouse'
@@ -19,6 +20,7 @@ const NAV_BANK = [
   ['#ask', 'Ask'],
   ['#customer360', 'Customers'],
   ['#matching', 'Matching'],
+  ['#quality', 'Checks'],
   ['#sql', 'Analyst SQL'],
   ['#cores', 'Raw feeds'],
   ['#architecture', 'How it\'s built'],
@@ -27,6 +29,7 @@ const NAV_TECH = [
   ['#ask', 'Ask'],
   ['#customer360', 'Customer 360'],
   ['#matching', 'Matching'],
+  ['#quality', 'Checks'],
   ['#sql', 'SQL'],
   ['#cores', 'The two cores'],
   ['#architecture', 'Architecture'],
@@ -73,6 +76,7 @@ function Shell() {
         <AgentPanel lineage={lh?.lineage ?? null} />
         <Customer360 lineage={lh?.lineage ?? null} />
         {bank ? <Decisions report={lh?.matchReport ?? null} /> : <MatchReport report={lh?.matchReport ?? null} />}
+        <QualityPanel />
         <Collapsible
           id="sql"
           title={bank ? 'For analysts: run your own SQL' : 'SQL console'}

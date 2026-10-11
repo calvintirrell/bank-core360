@@ -120,6 +120,10 @@
     "traps_merged": 0,
     "truth_pairs": 300
   },
+  "quality": {
+    "checks": 8,
+    "passed": 8
+  },
   "replay": {
     "questions": 7,
     "regenerated": 0,

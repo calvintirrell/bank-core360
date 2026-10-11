@@ -26,6 +26,11 @@ const WHY: Record<string, { problem: string; decision: string; tradeoff: string 
     decision: 'What to standardise first, and what to leave exactly as received for audit.',
     tradeoff: 'The raw files are kept untouched and standardised downstream. That doubles storage but keeps a trail from any number back to a file the bank handed over.',
   },
+  quality: {
+    problem: 'A number that cannot be checked is a number nobody will defend in front of an examiner or a board.',
+    decision: 'Whether the page can be published at all. Every build runs these checks and refuses to ship if one fails.',
+    tradeoff: 'Eight checks is a demo. A product would let the bank add its own thresholds and would alert on drift between runs, not just hard failures.',
+  },
   architecture: {
     problem: 'Pipelines that only run on one laptop cannot be trusted or handed over.',
     decision: 'Whether every number can be rebuilt from the sources, by anyone, the same way.',
