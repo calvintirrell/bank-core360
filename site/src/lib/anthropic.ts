@@ -15,10 +15,6 @@ export const DEFAULT_MODEL: ModelId = 'claude-opus-5-5'
  */
 export const PROXY_URL: string = (import.meta.env.VITE_PROXY_URL as string | undefined) ?? ''
 
-export function proxyAllowsModel(model: ModelId): boolean {
-  return MODELS.find((m) => m.id === model)?.proxy ?? false
-}
-
 /**
  * Client factory. With a key: direct to api.anthropic.com from the browser (key never leaves the
  * tab except to Anthropic). Without a key: through the shared proxy, which ignores the dummy key.
