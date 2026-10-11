@@ -71,6 +71,14 @@ GROUP BY 1, 2
 ORDER BY 1, 2`,
   },
   {
+    label: 'Review queue by money at stake',
+    sql: `SELECT priority, core_a_name, core_b_name, dob, confidence,
+       core_b_ssn_missing, phone_match, postal_code_match, combined_balance
+FROM review_queue
+ORDER BY priority
+LIMIT 25`,
+  },
+  {
     label: 'One customer, both cores',
     sql: `SELECT a.customer_key, c.full_name, a.source_system, a.product_type,
        a.balance, a.is_open, a.last_txn_ts, a.is_dormant_180d

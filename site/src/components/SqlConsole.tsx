@@ -67,7 +67,7 @@ export function SqlConsole({ lineage }: { lineage: Lineage | null }) {
         </button>
         {result && (
           <span className="text-xs text-slate-500">
-            {result.rows.length.toLocaleString()} row{result.rows.length === 1 ? '' : 's'} in {result.ms} ms. Tables: customer_360, account_360, transactions.
+            {result.rows.length.toLocaleString()} row{result.rows.length === 1 ? '' : 's'} in {result.ms} ms. Tables: customer_360, account_360, transactions, review_queue.
           </span>
         )}
       </div>

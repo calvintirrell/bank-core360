@@ -156,6 +156,70 @@ def customer_360(cust: pl.DataFrame, xref: pl.DataFrame, acct360: pl.DataFrame) 
     ).sort("customer_key")
 
 
+def review_queue(cust: pl.DataFrame, xref: pl.DataFrame, review: pl.DataFrame, c360: pl.DataFrame) -> pl.DataFrame:
+    """G-20: candidate pairs below the auto-merge threshold, enriched so a human can triage them.
+    Each side is still its own customer_360 row; nothing here is merged."""
+    a = cust.filter(pl.col("source_system") == "core_a").select(
+        pl.col("source_customer_id").alias("core_a_cif"),
+        pl.col("full_name").alias("core_a_name"),
+        pl.col("dob"),
+    )
+    b = cust.filter(pl.col("source_system") == "core_b").select(
+        pl.col("source_customer_id").alias("core_b_customer_id"),
+        pl.col("full_name").alias("core_b_name"),
+        pl.col("ssn_last4").is_null().alias("core_b_ssn_missing"),
+    )
+    xa = xref.filter(pl.col("source_system") == "core_a").select(
+        pl.col("source_customer_id").alias("core_a_cif"), pl.col("customer_key").alias("core_a_customer_key")
+    )
+    xb = xref.filter(pl.col("source_system") == "core_b").select(
+        pl.col("source_customer_id").alias("core_b_customer_id"), pl.col("customer_key").alias("core_b_customer_key")
+    )
+    bal = c360.select("customer_key", (pl.col("deposit_balance") + pl.col("loan_balance")).alias("balance"), "open_accounts")
+    df = (
+        review.join(a, on="core_a_cif", how="left")
+        .join(b, on="core_b_customer_id", how="left")
+        .join(xa, on="core_a_cif", how="left")
+        .join(xb, on="core_b_customer_id", how="left")
+        .join(
+            bal.rename({"customer_key": "core_a_customer_key", "balance": "core_a_balance", "open_accounts": "core_a_open_accounts"}),
+            on="core_a_customer_key",
+            how="left",
+        )
+        .join(
+            bal.rename({"customer_key": "core_b_customer_key", "balance": "core_b_balance", "open_accounts": "core_b_open_accounts"}),
+            on="core_b_customer_key",
+            how="left",
+        )
+        .with_columns(
+            (pl.col("core_a_balance").fill_null(0.0) + pl.col("core_b_balance").fill_null(0.0)).round(2).alias("combined_balance")
+        )
+        .sort(["combined_balance", "confidence"], descending=[True, True])
+        .with_row_index("priority", offset=1)
+    )
+    return df.select(
+        "priority",
+        "core_a_customer_key",
+        "core_b_customer_key",
+        "core_a_cif",
+        "core_b_customer_id",
+        "core_a_name",
+        "core_b_name",
+        "dob",
+        "confidence",
+        "name_similarity",
+        "ssn_signal",
+        "core_b_ssn_missing",
+        "phone_match",
+        "postal_code_match",
+        "core_a_balance",
+        "core_b_balance",
+        "combined_balance",
+        "core_a_open_accounts",
+        "core_b_open_accounts",
+    )
+
+
 def run() -> dict[str, int]:
     cust = read_table(SILVER, "customers")
     accounts = read_table(SILVER, "accounts")
@@ -163,6 +227,8 @@ def run() -> dict[str, int]:
     xref = read_table(SILVER, "customer_xref")
     a360 = account_360(accounts, txns, xref)
     c360 = customer_360(cust, xref, a360)
+    rq = review_queue(cust, xref, read_table(SILVER, "match_review_queue"), c360)
     write_table(a360, GOLD, "account_360", "One row per account with resolved customer_key, activity and dormancy")
     write_table(c360, GOLD, "customer_360", "One row per resolved customer across both cores")
-    return {"account_360": a360.height, "customer_360": c360.height}
+    write_table(rq, GOLD, "review_queue", "Cross-core candidate pairs below the auto-merge threshold, enriched for human triage")
+    return {"account_360": a360.height, "customer_360": c360.height, "review_queue": rq.height}

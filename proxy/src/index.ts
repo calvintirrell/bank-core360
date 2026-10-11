@@ -2,8 +2,12 @@
  * bank-core360 proxy: holds the Anthropic API key so the GitHub Pages demo works with no key.
  *
  * Guards, in order: origin allowlist, per-IP rate limit, kill switch, body validation (model
- * allowlist, max_tokens cap, custom tools only, bounded size), then daily + monthly caps. Counters
- * only increment for requests that are actually forwarded upstream. The browser never sees the key; it calls this Worker with
+ * allowlist, max_tokens cap, custom tools only, bounded size), then daily + monthly caps counted in
+ * QUESTIONS: the page sends x-demo-call: 1 on the first API call of a question and 2, 3, ... on its
+ * follow-ups, so only call 1 counts against the question caps. KV is eventually consistent, so the
+ * client declares this rather than the Worker inferring it; the abuse backstop is a hard ceiling
+ * of DAILY_CAP * CALLS_PER_QUESTION calls per day regardless of headers. A call without the header
+ * counts as a question of its own. Counters only increment for requests actually forwarded. The browser never sees the key; it calls this Worker with
  * the same request shape it would send to api.anthropic.com (the SDK just gets a different baseURL).
  */
 
@@ -14,12 +18,19 @@ export interface Env {
   MAX_TOKENS_CAP: string
   DAILY_CAP: string
   MONTHLY_CAP: string
+  CALLS_PER_QUESTION: string
   RATE_LIMITER: { limit(opts: { key: string }): Promise<{ success: boolean }> }
   USAGE: KVNamespace
 }
 
 const UPSTREAM = 'https://api.anthropic.com/v1/messages'
 const MAX_BODY_BYTES = 100_000
+const DAY_TTL = 60 * 60 * 48
+const MONTH_TTL = 60 * 60 * 24 * 40
+
+function keys(now: string) {
+  return { day: `qcount:${now.slice(0, 10)}`, month: `qcount:${now.slice(0, 7)}`, calls: `ccount:${now.slice(0, 10)}` }
+}
 
 function corsHeaders(origin: string, req: Request): Headers {
   const h = new Headers()
@@ -56,16 +67,15 @@ export default {
     if (url.pathname === '/quota' && req.method === 'GET') {
       // Lets the page show "N of M demo queries left today" before anyone clicks.
       const now = new Date().toISOString()
-      const [d, m, disabled] = await Promise.all([
-        env.USAGE.get(`count:${now.slice(0, 10)}`),
-        env.USAGE.get(`count:${now.slice(0, 7)}`),
-        env.USAGE.get('disabled'),
-      ])
+      const k = keys(now)
+      const [d, m, disabled] = await Promise.all([env.USAGE.get(k.day), env.USAGE.get(k.month), env.USAGE.get('disabled')])
       const capDay = Number(env.DAILY_CAP)
       const capMonth = Number(env.MONTHLY_CAP)
       return json(
         200,
         {
+          unit: 'questions',
+          calls_per_question: Number(env.CALLS_PER_QUESTION),
           cap_today: capDay,
           used_today: Number(d ?? '0'),
           remaining_today: Math.max(0, capDay - Number(d ?? '0')),
@@ -120,25 +130,36 @@ export default {
     delete body.mcp_servers
     delete body.container
 
-    // Daily + monthly caps across all users; increment only for requests we actually forward.
+    // Daily + monthly caps in questions; increment only for requests we actually forward.
     const now = new Date().toISOString()
-    const dayKey = `count:${now.slice(0, 10)}`
-    const monthKey = `count:${now.slice(0, 7)}`
-    const [usedDay, usedMonth] = await Promise.all([env.USAGE.get(dayKey), env.USAGE.get(monthKey)])
+    const k = keys(now)
     const dayCap = Number(env.DAILY_CAP)
     const monthCap = Number(env.MONTHLY_CAP)
-    const d = Number(usedDay ?? '0')
-    const m = Number(usedMonth ?? '0')
-    if (d >= dayCap) {
-      return err(429, 'rate_limit_error', `daily demo cap (${dayCap}) reached; try again tomorrow or use your own key`, cors)
+    const perQuestion = Number(env.CALLS_PER_QUESTION)
+    const callIndex = Number(req.headers.get('x-demo-call') ?? '1') || 1
+    const [usedDay, usedMonth, usedCalls] = await Promise.all([env.USAGE.get(k.day), env.USAGE.get(k.month), env.USAGE.get(k.calls)])
+    let d = Number(usedDay ?? '0')
+    let m = Number(usedMonth ?? '0')
+    const c = Number(usedCalls ?? '0')
+    if (c >= dayCap * perQuestion) {
+      return err(429, 'rate_limit_error', `daily demo cap reached (call ceiling); try again tomorrow or use your own key`, cors)
     }
-    if (m >= monthCap) {
-      return err(429, 'rate_limit_error', `monthly demo cap (${monthCap}) reached; use your own key`, cors)
+    if (callIndex > perQuestion) {
+      return err(429, 'rate_limit_error', `this question already used its ${perQuestion} API calls; ask it again as a new question`, cors)
     }
-    await Promise.all([
-      env.USAGE.put(dayKey, String(d + 1), { expirationTtl: 60 * 60 * 48 }),
-      env.USAGE.put(monthKey, String(m + 1), { expirationTtl: 60 * 60 * 24 * 40 }),
-    ])
+    const writes: Promise<void>[] = [env.USAGE.put(k.calls, String(c + 1), { expirationTtl: DAY_TTL })]
+    if (callIndex === 1) {
+      if (d >= dayCap) {
+        return err(429, 'rate_limit_error', `daily demo cap (${dayCap} questions) reached; try again tomorrow or use your own key`, cors)
+      }
+      if (m >= monthCap) {
+        return err(429, 'rate_limit_error', `monthly demo cap (${monthCap} questions) reached; use your own key`, cors)
+      }
+      d += 1
+      m += 1
+      writes.push(env.USAGE.put(k.day, String(d), { expirationTtl: DAY_TTL }), env.USAGE.put(k.month, String(m), { expirationTtl: MONTH_TTL }))
+    }
+    await Promise.all(writes)
 
     const upstream = await fetch(UPSTREAM, {
       method: 'POST',
@@ -157,8 +178,8 @@ export default {
       const v = upstream.headers.get(name)
       if (v) h.set(name, v)
     }
-    h.set('x-demo-remaining-today', String(dayCap - d - 1))
-    h.set('x-demo-remaining-month', String(monthCap - m - 1))
+    h.set('x-demo-remaining-today', String(Math.max(0, dayCap - d)))
+    h.set('x-demo-remaining-month', String(Math.max(0, monthCap - m)))
     return new Response(upstream.body, { status: upstream.status, headers: h })
   },
 }

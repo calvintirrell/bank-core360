@@ -13,7 +13,7 @@ export type Lineage = {
 
 export type ColumnLookup = { table: string; column: string; lineage: ColumnLineage }
 
-const ORDER = ['customer_360', 'account_360', 'transactions']
+const ORDER = ['customer_360', 'account_360', 'transactions', 'review_queue']
 
 /** Finds lineage for a result column by name: preferred table first, then the others. */
 export function lookupColumn(lineage: Lineage, column: string, preferTable?: string): ColumnLookup | null {

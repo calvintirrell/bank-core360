@@ -81,6 +81,27 @@ COLUMN_TYPES = {
         "memo": "text",
         "direction": "text ('credit' | 'debit')",
     },
+    "review_queue": {
+        "priority": "integer (1 = most money at stake)",
+        "core_a_customer_key": "text",
+        "core_b_customer_key": "text",
+        "core_a_cif": "text",
+        "core_b_customer_id": "text",
+        "core_a_name": "text",
+        "core_b_name": "text",
+        "dob": "date",
+        "confidence": "double 0.55-0.80",
+        "name_similarity": "double 0-1",
+        "ssn_signal": "double (1 equal, 0.5 missing)",
+        "core_b_ssn_missing": "boolean",
+        "phone_match": "boolean",
+        "postal_code_match": "boolean",
+        "core_a_balance": "double",
+        "core_b_balance": "double",
+        "combined_balance": "double",
+        "core_a_open_accounts": "integer",
+        "core_b_open_accounts": "integer",
+    },
 }
 
 
@@ -101,9 +122,9 @@ def build_prompt() -> str:
         "5. Be concrete and brief. No preamble.",
         "",
         f"As-of date for all recency and dormancy rules: {AS_OF.isoformat()}. 'Dormant' means an open account with no transactions in the {DORMANT_DAYS} days before as-of (rule G-10).",
-        "'6 months' or 'half a year' of inactivity maps to checking_dormant_180d / is_dormant_180d.",
+        "'6 months' or 'half a year' of inactivity maps to checking_dormant_180d / is_dormant_180d. The transactions feed covers the 365 days before as-of; nothing older exists.",
         "",
-        "Tables (DuckDB SQL):",
+        "Tables (DuckDB SQL). customer_360 / account_360 / transactions are the resolved data; review_queue lists cross-core candidate pairs that were NOT merged (ER-05) and still appear as two separate customer_360 rows.",
     ]
     for table, cols in COLUMN_TYPES.items():
         grain = LINEAGE["tables"][table]["grain"]
@@ -115,7 +136,7 @@ def build_prompt() -> str:
         "",
         "Rules referenced by lineage (cite by id when relevant):",
     ]
-    for rid in ("ER-03", "ER-04", "ER-05", "G-01", "G-02", "G-05", "G-06", "G-10", "G-11", "S-10", "S-11"):
+    for rid in ("ER-03", "ER-04", "ER-05", "G-01", "G-02", "G-05", "G-06", "G-10", "G-11", "G-20", "S-10", "S-11"):
         lines.append(f"  {rid}: {LINEAGE['rules'][rid]}")
     lines += [
         "",
@@ -123,7 +144,7 @@ def build_prompt() -> str:
             "Notes: source_systems = 'core_a+core_b' means the person was found in both cores by entity resolution. "
             "customer_360.checking_dormant_180d is true if ANY open checking account is dormant (rule G-11), so a customer can also "
             "show recent activity on another checking account; use account_360 for per-account detail. "
-            "Balances are dollars. All data is synthetic."
+            "Core A stores no email, so email is null for Core A-only customers. Balances are dollars. All data is synthetic."
         ),
     ]
     return "\n".join(lines) + "\n"

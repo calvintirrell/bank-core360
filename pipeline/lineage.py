@@ -57,6 +57,7 @@ RULES = {
     "G-06": "loan_balance = sum of open loan-category balances",
     "G-10": f"is_dormant_180d = open account with zero transactions in the {DORMANT_DAYS} days before {AS_OF.isoformat()}",
     "G-11": "checking_dormant_180d = any open checking account dormant per G-10",
+    "G-20": "review_queue = candidate pairs scored 0.55-0.80 (ER-05), not merged; each side remains its own customer_360 row; priority = rank by combined balance",
 }
 
 CUSTOMER_360 = {
@@ -136,6 +137,32 @@ TRANSACTIONS = {
     "direction": col(BOTH_TXN("DR_CR", "amount"), "credit / debit", ["S-23"]),
 }
 
+REVIEW_QUEUE = {
+    "priority": col(BOTH_CUST("CIF_NO", "customer_id"), "1 = most money at stake", ["G-20"]),
+    "core_a_customer_key": col([src(A, "CUSTMAST.psv", "CIF_NO")], "customer_key of the Core A side (unmerged)", ["ER-07", "G-20"]),
+    "core_b_customer_key": col([src(B, "customers.jsonl", "customer_id")], "customer_key of the Core B side (unmerged)", ["ER-07", "G-20"]),
+    "core_a_cif": col([src(A, "CUSTMAST.psv", "CIF_NO")], "pass-through", []),
+    "core_b_customer_id": col([src(B, "customers.jsonl", "customer_id")], "pass-through", []),
+    "core_a_name": col([src(A, "CUSTMAST.psv", "CUST_NAME")], "title case", ["S-01"]),
+    "core_b_name": col([src(B, "customers.jsonl", "first_name,last_name")], "first + last", []),
+    "dob": col(BOTH_CUST("DOB", "date_of_birth"), "shared date of birth (blocking key)", ["ER-01"]),
+    "confidence": col(
+        BOTH_CUST("CUST_NAME,SSN_LAST4,PHONE,ZIP", "first_name,last_name,ssn_last_four,phone,address.postal_code"),
+        "tier 2 score",
+        ["ER-04", "ER-05"],
+    ),
+    "name_similarity": col(BOTH_CUST("CUST_NAME", "first_name,last_name"), "token-set ratio of name keys, 0-1", ["S-07", "S-08", "ER-04"]),
+    "ssn_signal": col(BOTH_CUST("SSN_LAST4", "ssn_last_four"), "1 equal, 0.5 missing on a side", ["ER-04"]),
+    "core_b_ssn_missing": col([src(B, "customers.jsonl", "ssn_last_four")], "true when Core B has no SSN last-4", []),
+    "phone_match": col(BOTH_CUST("PHONE", "phone"), "10-digit phones equal", ["S-04", "ER-04"]),
+    "postal_code_match": col(BOTH_CUST("ZIP", "address.postal_code"), "postal codes equal", ["ER-04"]),
+    "core_a_balance": col([src(A, "ACCTMAST.psv", "CUR_BAL_CENTS")], "deposits + loans of the Core A side", ["S-11", "G-05", "G-06"]),
+    "core_b_balance": col([src(B, "accounts.jsonl", "balance")], "deposits + loans of the Core B side", ["G-05", "G-06"]),
+    "combined_balance": col(BOTH_ACCT("CUR_BAL_CENTS", "balance"), "sum of both sides", ["G-20"]),
+    "core_a_open_accounts": col([src(A, "ACCTMAST.psv", "ACCT_STAT")], "open accounts on the Core A side", ["S-12"]),
+    "core_b_open_accounts": col([src(B, "accounts.jsonl", "status")], "open accounts on the Core B side", ["S-12"]),
+}
+
 LINEAGE = {
     "as_of": AS_OF.isoformat(),
     "systems": {
@@ -153,6 +180,7 @@ LINEAGE = {
         "customer_360": {"grain": "one row per resolved customer", "columns": CUSTOMER_360},
         "account_360": {"grain": "one row per account", "columns": ACCOUNT_360},
         "transactions": {"grain": "one row per transaction", "columns": TRANSACTIONS},
+        "review_queue": {"grain": "one row per unmerged cross-core candidate pair awaiting human review", "columns": REVIEW_QUEUE},
     },
 }
 

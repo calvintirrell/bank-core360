@@ -24,7 +24,7 @@ def run_pipeline() -> None:
 @pytest.fixture(scope="session")
 def con() -> duckdb.DuckDBPyConnection:
     c = duckdb.connect()
-    for t in ("customer_360", "account_360", "transactions"):
+    for t in ("customer_360", "account_360", "transactions", "review_queue"):
         c.execute(f"CREATE VIEW {t} AS SELECT * FROM read_parquet('{EXPORT / (t + '.parquet')}')")
     return c
 
@@ -154,10 +154,31 @@ def test_as_of_consistent_with_generator():
     assert GEN_AS_OF == AS_OF
 
 
+def test_review_queue_is_unmerged_pairs(con, match_report):
+    n = con.sql("SELECT count(*) FROM review_queue").fetchone()[0]
+    assert n == match_report["review_queue"] > 0
+    assert con.sql("SELECT count(*) FROM review_queue WHERE core_a_customer_key = core_b_customer_key").fetchone()[0] == 0
+    assert con.sql("SELECT count(*) FROM review_queue WHERE confidence < 0.55 OR confidence >= 0.80").fetchone()[0] == 0
+    assert con.sql(
+        "SELECT list(priority ORDER BY priority) = list(priority ORDER BY combined_balance DESC, confidence DESC) FROM review_queue"
+    ).fetchone()[0]
+
+
+def test_emails_match_surnames(con):
+    """Core B-only people have an email built from their own surname. Allowed exceptions: the 5
+    same-name traps (another person's name, own email) and the 25 designed last-name-change cases
+    that stay unmerged (review queue or undetectable), whose email keeps the maiden surname."""
+    bad = con.sql(
+        "SELECT count(*) FROM customer_360 WHERE source_systems = 'core_b' AND email IS NOT NULL AND NOT contains(email, lower(last_name))"
+    ).fetchone()[0]
+    assert bad <= 30
+    assert con.sql("SELECT count(*) FROM customer_360 WHERE source_systems = 'core_a' AND email IS NOT NULL").fetchone()[0] == 0
+
+
 # --- lineage ------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("table", ["customer_360", "account_360", "transactions"])
+@pytest.mark.parametrize("table", ["customer_360", "account_360", "transactions", "review_queue"])
 def test_every_exported_column_has_lineage(table):
     cols = pl.read_parquet_schema(EXPORT / f"{table}.parquet").keys()
     documented = LINEAGE["tables"][table]["columns"].keys()

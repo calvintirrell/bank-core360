@@ -21,7 +21,7 @@ export function MatchReport({ report }: { report: Report | null }) {
     <Section id="matching" title="Entity resolution, scored" subtitle="Which customers are the same person across the two cores. Because the data is synthetic, the generator's ground truth lets the matcher grade itself; in production this is a sampled audit.">
       <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <Stat label="Auto-merged" value={report.auto_merged.toLocaleString()} hint={`${report.tier_1_deterministic} deterministic, ${report.tier_2_fuzzy} fuzzy`} />
-        <Stat label="Review queue" value={report.review_queue.toLocaleString()} hint="not merged, for a human" />
+        <Stat label="Review queue" value={report.review_queue.toLocaleString()} hint="not merged; query review_queue" />
         <Stat label="Precision" value={pct(report.precision)} hint="no false merges" />
         <Stat label="Recall" value={pct(report.recall)} hint={`${report.review_queue} in review, ${report.false_negatives - report.review_queue} undetectable`} />
         <Stat label="Traps merged" value={String(report.traps_merged)} hint="same name + DOB, different person" />

@@ -73,6 +73,15 @@ ORDER BY loan_balance DESC
 LIMIT 25""",
     },
     {
+        "id": "review-queue-priority",
+        "question": "Which pairs in the review queue should someone look at first?",
+        "sql": """SELECT priority, core_a_name, core_b_name, dob, confidence, core_b_ssn_missing,
+       phone_match, postal_code_match, combined_balance
+FROM review_queue
+ORDER BY priority
+LIMIT 25""",
+    },
+    {
         "id": "credit-debit-mix",
         "question": "What share of transactions in each core are credits versus debits?",
         "sql": """SELECT source_system, direction, count(*) AS transactions,
@@ -87,7 +96,7 @@ ORDER BY 1, 2""",
 
 def _connect() -> duckdb.DuckDBPyConnection:
     con = duckdb.connect()
-    for t in ("customer_360", "account_360", "transactions"):
+    for t in ("customer_360", "account_360", "transactions", "review_queue"):
         con.execute(f"CREATE VIEW {t} AS SELECT * FROM read_parquet('{EXPORT / (t + '.parquet')}')")
     return con
 

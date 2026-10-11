@@ -23,7 +23,7 @@ def export() -> dict[str, dict]:
         .select(["customer_key", "source_system", "source_txn_id", "source_account_id", "txn_ts", "amount", "memo", "direction"])
         .sort(["source_system", "source_txn_id"])
     )
-    tables = {"customer_360": c360, "account_360": a360, "transactions": txns}
+    tables = {"customer_360": c360, "account_360": a360, "transactions": txns, "review_queue": read_table(GOLD, "review_queue")}
     out = {}
     for name, df in tables.items():
         df.write_parquet(EXPORT / f"{name}.parquet", compression="zstd", statistics=True)

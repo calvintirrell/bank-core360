@@ -41,7 +41,8 @@
     "G-05": "deposit_balance = sum of open deposit-category balances",
     "G-06": "loan_balance = sum of open loan-category balances",
     "G-10": "is_dormant_180d = open account with zero transactions in the 180 days before 2026-09-30",
-    "G-11": "checking_dormant_180d = any open checking account dormant per G-10"
+    "G-11": "checking_dormant_180d = any open checking account dormant per G-10",
+    "G-20": "review_queue = candidate pairs scored 0.55-0.80 (ER-05), not merged; each side remains its own customer_360 row; priority = rank by combined balance"
   },
   "tables": {
     "customer_360": {
@@ -1050,6 +1051,299 @@
           "transform": "credit / debit",
           "rules": [
             "S-23"
+          ]
+        }
+      }
+    },
+    "review_queue": {
+      "grain": "one row per unmerged cross-core candidate pair awaiting human review",
+      "columns": {
+        "priority": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "CUSTMAST.psv",
+              "field": "CIF_NO"
+            },
+            {
+              "system": "core_b",
+              "table": "customers.jsonl",
+              "field": "customer_id"
+            }
+          ],
+          "transform": "1 = most money at stake",
+          "rules": [
+            "G-20"
+          ]
+        },
+        "core_a_customer_key": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "CUSTMAST.psv",
+              "field": "CIF_NO"
+            }
+          ],
+          "transform": "customer_key of the Core A side (unmerged)",
+          "rules": [
+            "ER-07",
+            "G-20"
+          ]
+        },
+        "core_b_customer_key": {
+          "sources": [
+            {
+              "system": "core_b",
+              "table": "customers.jsonl",
+              "field": "customer_id"
+            }
+          ],
+          "transform": "customer_key of the Core B side (unmerged)",
+          "rules": [
+            "ER-07",
+            "G-20"
+          ]
+        },
+        "core_a_cif": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "CUSTMAST.psv",
+              "field": "CIF_NO"
+            }
+          ],
+          "transform": "pass-through",
+          "rules": []
+        },
+        "core_b_customer_id": {
+          "sources": [
+            {
+              "system": "core_b",
+              "table": "customers.jsonl",
+              "field": "customer_id"
+            }
+          ],
+          "transform": "pass-through",
+          "rules": []
+        },
+        "core_a_name": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "CUSTMAST.psv",
+              "field": "CUST_NAME"
+            }
+          ],
+          "transform": "title case",
+          "rules": [
+            "S-01"
+          ]
+        },
+        "core_b_name": {
+          "sources": [
+            {
+              "system": "core_b",
+              "table": "customers.jsonl",
+              "field": "first_name,last_name"
+            }
+          ],
+          "transform": "first + last",
+          "rules": []
+        },
+        "dob": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "CUSTMAST.psv",
+              "field": "DOB"
+            },
+            {
+              "system": "core_b",
+              "table": "customers.jsonl",
+              "field": "date_of_birth"
+            }
+          ],
+          "transform": "shared date of birth (blocking key)",
+          "rules": [
+            "ER-01"
+          ]
+        },
+        "confidence": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "CUSTMAST.psv",
+              "field": "CUST_NAME,SSN_LAST4,PHONE,ZIP"
+            },
+            {
+              "system": "core_b",
+              "table": "customers.jsonl",
+              "field": "first_name,last_name,ssn_last_four,phone,address.postal_code"
+            }
+          ],
+          "transform": "tier 2 score",
+          "rules": [
+            "ER-04",
+            "ER-05"
+          ]
+        },
+        "name_similarity": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "CUSTMAST.psv",
+              "field": "CUST_NAME"
+            },
+            {
+              "system": "core_b",
+              "table": "customers.jsonl",
+              "field": "first_name,last_name"
+            }
+          ],
+          "transform": "token-set ratio of name keys, 0-1",
+          "rules": [
+            "S-07",
+            "S-08",
+            "ER-04"
+          ]
+        },
+        "ssn_signal": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "CUSTMAST.psv",
+              "field": "SSN_LAST4"
+            },
+            {
+              "system": "core_b",
+              "table": "customers.jsonl",
+              "field": "ssn_last_four"
+            }
+          ],
+          "transform": "1 equal, 0.5 missing on a side",
+          "rules": [
+            "ER-04"
+          ]
+        },
+        "core_b_ssn_missing": {
+          "sources": [
+            {
+              "system": "core_b",
+              "table": "customers.jsonl",
+              "field": "ssn_last_four"
+            }
+          ],
+          "transform": "true when Core B has no SSN last-4",
+          "rules": []
+        },
+        "phone_match": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "CUSTMAST.psv",
+              "field": "PHONE"
+            },
+            {
+              "system": "core_b",
+              "table": "customers.jsonl",
+              "field": "phone"
+            }
+          ],
+          "transform": "10-digit phones equal",
+          "rules": [
+            "S-04",
+            "ER-04"
+          ]
+        },
+        "postal_code_match": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "CUSTMAST.psv",
+              "field": "ZIP"
+            },
+            {
+              "system": "core_b",
+              "table": "customers.jsonl",
+              "field": "address.postal_code"
+            }
+          ],
+          "transform": "postal codes equal",
+          "rules": [
+            "ER-04"
+          ]
+        },
+        "core_a_balance": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "ACCTMAST.psv",
+              "field": "CUR_BAL_CENTS"
+            }
+          ],
+          "transform": "deposits + loans of the Core A side",
+          "rules": [
+            "S-11",
+            "G-05",
+            "G-06"
+          ]
+        },
+        "core_b_balance": {
+          "sources": [
+            {
+              "system": "core_b",
+              "table": "accounts.jsonl",
+              "field": "balance"
+            }
+          ],
+          "transform": "deposits + loans of the Core B side",
+          "rules": [
+            "G-05",
+            "G-06"
+          ]
+        },
+        "combined_balance": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "ACCTMAST.psv",
+              "field": "CUR_BAL_CENTS"
+            },
+            {
+              "system": "core_b",
+              "table": "accounts.jsonl",
+              "field": "balance"
+            }
+          ],
+          "transform": "sum of both sides",
+          "rules": [
+            "G-20"
+          ]
+        },
+        "core_a_open_accounts": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "ACCTMAST.psv",
+              "field": "ACCT_STAT"
+            }
+          ],
+          "transform": "open accounts on the Core A side",
+          "rules": [
+            "S-12"
+          ]
+        },
+        "core_b_open_accounts": {
+          "sources": [
+            {
+              "system": "core_b",
+              "table": "accounts.jsonl",
+              "field": "status"
+            }
+          ],
+          "transform": "open accounts on the Core B side",
+          "rules": [
+            "S-12"
           ]
         }
       }

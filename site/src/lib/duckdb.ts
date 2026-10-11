@@ -1,7 +1,7 @@
 import * as duckdb from '@duckdb/duckdb-wasm'
 import { Type, type Field } from 'apache-arrow'
 
-export const TABLES = ['customer_360', 'account_360', 'transactions'] as const
+export const TABLES = ['customer_360', 'account_360', 'transactions', 'review_queue'] as const
 export type TableName = (typeof TABLES)[number]
 
 export type ColumnKind = 'integer' | 'number' | 'boolean' | 'date' | 'timestamp' | 'text'

@@ -67,6 +67,30 @@
       ],
       "rows": 2035
     },
+    "review_queue": {
+      "columns": [
+        "priority",
+        "core_a_customer_key",
+        "core_b_customer_key",
+        "core_a_cif",
+        "core_b_customer_id",
+        "core_a_name",
+        "core_b_name",
+        "dob",
+        "confidence",
+        "name_similarity",
+        "ssn_signal",
+        "core_b_ssn_missing",
+        "phone_match",
+        "postal_code_match",
+        "core_a_balance",
+        "core_b_balance",
+        "combined_balance",
+        "core_a_open_accounts",
+        "core_b_open_accounts"
+      ],
+      "rows": 25
+    },
     "transactions": {
       "columns": [
         "customer_key",
@@ -83,7 +107,8 @@
   },
   "gold": {
     "account_360": 4921,
-    "customer_360": 2035
+    "customer_360": 2035,
+    "review_queue": 25
   },
   "match": {
     "auto_merged": 265,
@@ -96,9 +121,9 @@
     "truth_pairs": 300
   },
   "replay": {
-    "questions": 6,
+    "questions": 7,
     "regenerated": 0,
-    "with_transcript": 6
+    "with_transcript": 0
   },
   "schema_version": 1,
   "seed": 360,

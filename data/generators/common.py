@@ -92,6 +92,7 @@ def build_people(rng: random.Random, fake: Faker) -> list[Person]:
     seen_ssn: set[str] = set()
     for pid in range(N_UNIQUE):
         first = rng.choice(first_names)
+        last = fake.last_name()
         ssn4 = f"{rng.randint(0, 9999):04d}"
         while ssn4 in seen_ssn:
             ssn4 = f"{rng.randint(0, 9999):04d}"
@@ -103,7 +104,7 @@ def build_people(rng: random.Random, fake: Faker) -> list[Person]:
                 pid=pid,
                 first=first,
                 middle=rng.choice("ABCDEFGHJKLMNPRSTW"),
-                last=fake.last_name(),
+                last=last,
                 dob=dob,
                 ssn4=ssn4,
                 street=fake.street_address(),
@@ -111,7 +112,7 @@ def build_people(rng: random.Random, fake: Faker) -> list[Person]:
                 state=fake.state_abbr(),
                 zip=f"{rng.randint(10000, 99999)}",
                 phone=f"{rng.randint(200, 989)}{rng.randint(200, 999)}{rng.randint(0, 9999):04d}",
-                email=f"{first.lower()}.{fake.last_name().lower()}{rng.randint(1, 99)}@example.com",
+                email=f"{first.lower()}.{last.lower()}{rng.randint(1, 99)}@example.com",
                 since=since,
             )
         )

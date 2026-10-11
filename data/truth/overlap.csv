@@ -40,8 +40,8 @@ a_cif,b_customer_id,kind,same_person
 10000994,bd28602a-9e74-43f6-8656-ef33cc362ea4,nickname,True
 10001002,5c3f44ff-b1b5-4019-9e22-d64757672474,middle_hyphen,True
 10001013,5432ae52-7be5-44ee-a2c5-1ceeeb972275,clean,True
-10001015,a2698915-3aa1-4b3c-b390-3fe8b5906e52,typo,True
-10001083,174b5630-fd3c-4608-842b-858ce4ad0447,typo,True
+10001015,f3903fe8-b590-4e52-9b53-fe0c090c9736,typo,True
+10001083,e4ad0447-39b0-405f-9551-d509a7b6ad01,typo,True
 10001128,eb97be9c-fb0b-477c-a34b-680c6d9053d1,clean,True
 10001135,69a7b9be-876f-414b-9465-7f5d940bd213,clean,True
 10001155,5b341567-3b32-486a-9304-1de3afb1411e,clean,True
@@ -52,7 +52,7 @@ a_cif,b_customer_id,kind,same_person
 10001216,ffe10326-2568-4f6f-bd69-17f77f0c7675,middle_hyphen,True
 10001219,e1de663e-f820-4b72-9c39-e88745a9da8a,clean,True
 10001242,1e64d4de-ace3-4573-9442-54fb095df073,clean,True
-10001262,56a58d41-9dfb-4625-801b-8722caddff28,typo,True
+10001262,9dfb2625-801b-4722-8add-ff285291bb01,typo,True
 10001286,6f95b7cd-d041-451a-bec9-cb69debd0386,middle_hyphen,True
 10001301,dd08a36f-020f-4198-9380-afe8a205a17d,clean,True
 10001338,4531b4fc-6766-41c1-8995-484d0ff9359b,clean,True
@@ -61,7 +61,7 @@ a_cif,b_customer_id,kind,same_person
 10001390,1f6c3f88-8243-4ebc-9280-d6927e9f0f8a,clean,True
 10001396,4a72057a-955e-4ab5-b5c5-8187033e3c45,clean,True
 10001434,bcb31f42-be0d-4d4c-b284-266761584029,clean,True
-10001472,7bba37bc-882a-40db-944d-81a3bf862352,typo,True
+10001472,faab5db4-6ba1-455e-bbba-37bc882a20db,typo,True
 10001477,a5bbd96e-8553-415d-839a-9e1a86436762,clean,True
 10001516,42d2ab25-0a88-4282-abc6-226b7ae393c2,lastname_changed_ssn_missing_moved_newphone,True
 10001523,0f59efae-a3a1-4beb-b299-5763362c2560,clean,True
@@ -94,7 +94,7 @@ a_cif,b_customer_id,kind,same_person
 10002194,d6037bee-e87c-4e5d-ba94-a06e6820ef1c,trap,False
 10002205,9bc71cb9-3f5b-48f8-b4ea-a5e27ba4fefd,lastname_changed,True
 10002238,342aee5a-643b-43c9-9302-9d1ddee6245a,lastname_changed,True
-10002259,52f28479-2004-4c12-b9ce-e89ab74ec4da,middle_hyphen,True
+10002259,2004fc12-39ce-489a-b74e-c4da90d660c4,middle_hyphen,True
 10002263,2583b5e2-d818-4d2d-adf4-b2b3016e9be5,clean,True
 10002299,ef0736a8-c66d-4928-8e7c-68a298cc86e5,clean,True
 10002305,880a368b-4abd-4fe1-873d-024aba94821d,ssn_missing,True
@@ -115,14 +115,14 @@ a_cif,b_customer_id,kind,same_person
 10002680,b2bf1980-6ea2-4a4f-beda-fe6518c0d922,clean,True
 10002684,0b7e8219-50b6-448e-af86-75ed99cd3d1d,clean,True
 10002715,e76bd0b9-d941-4bf9-9e28-ffb1edd0e6ae,clean,True
-10002747,45aef7eb-fb3c-473e-a5d3-bbfe119e6e3d,middle_hyphen,True
+10002747,fb3ca73e-25d3-4bfe-919e-6e3d8101e9c2,middle_hyphen,True
 10002765,c24d6481-3778-4142-a60d-3a14f7b0ea15,clean,True
 10002772,2937c85d-9b50-4194-a055-927a51752f8a,clean,True
 10002780,37001bff-9927-4ca5-b5fb-a1eccb5ed938,nickname,True
 10002798,b95180c9-6d0e-4d07-b0c3-6e3d64dbc837,clean,True
 10002830,ecd960e0-c0de-48c8-b94d-d0d55e9d667e,clean,True
 10002847,b6f9eddb-7536-4af0-b24e-99b0f28858c6,clean,True
-10002854,c07ba16c-231c-4aa1-a561-2e41e17798d0,nickname,True
+10002854,231c5aa1-a561-4e41-a177-98d09726c997,nickname,True
 10002883,a5d50b39-9af7-496d-bfba-7d861a47431e,ssn_missing,True
 10002886,b281c234-4e6c-4de3-bdf3-8554bc47062e,clean,True
 10002903,3d5dadea-2581-49b9-ba26-fcf3d1653434,nickname,True
@@ -146,7 +146,7 @@ a_cif,b_customer_id,kind,same_person
 10003298,b150c739-1106-4261-9b1a-51b987f2fcb8,clean,True
 10003327,e4e545bc-d755-4291-a71c-2b1b9bb431c3,ssn_missing_moved,True
 10003359,9a7d8993-c0a9-4031-ac7a-6cc34d5b81b1,clean,True
-10003360,b94e01db-ad0f-4b65-bc5b-a35dab27b0f7,middle_hyphen,True
+10003360,fc5ba35d-ab27-40f7-bbab-a65797a395c9,middle_hyphen,True
 10003410,b5cc73f5-8b34-4ed6-aecf-f0b892440d01,middle_hyphen,True
 10003419,f896513b-01ed-4182-83ee-20f3009b1396,clean,True
 10003554,e87845bb-9fe2-4353-a48c-14d51551bf5e,clean,True
@@ -207,7 +207,7 @@ a_cif,b_customer_id,kind,same_person
 10005025,1e22bd82-df7b-4d81-94ef-f005ed9a0efb,lastname_changed_ssn_missing,True
 10005043,c346e74a-6f6b-4a18-9bad-a93808f1a001,clean,True
 10005070,df127aed-337c-43d0-91fa-c72257be7a53,clean,True
-10005081,478bb3e0-40c3-47e7-bd43-9aca1ed895f5,typo,True
+10005081,3d439aca-1ed8-45f5-a366-c10cfc8e34f6,typo,True
 10005086,361fe20f-d6a7-414e-a8fa-f498f904ad60,clean,True
 10005095,72af48cd-adef-42dd-bb43-7c6edbe6f5ff,clean,True
 10005106,e2e34b56-c80f-4bee-a47d-8dc27f8cc725,clean,True
@@ -244,13 +244,13 @@ a_cif,b_customer_id,kind,same_person
 10005843,38cb0342-b62b-42ce-a371-45584a387bcf,lastname_changed_ssn_missing,True
 10005877,e3339b09-b25f-46c0-abbf-888fd7cd1e43,clean,True
 10005893,6cfc3c3c-e49b-4bbe-a46a-5636b76b7090,ssn_missing_moved,True
-10005896,98e189f0-98f9-4f3d-89d1-7ec18e0f0738,middle_hyphen,True
+10005896,09d17ec1-8e0f-4738-a804-70a49783ce77,middle_hyphen,True
 10005913,640a5296-f765-4d27-bd6c-e086768ef662,clean,True
 10006013,d271adb7-ef5d-4389-a8c3-5faa6c788fa1,clean,True
 10006049,3a7cb58f-25bf-4c8f-826f-341dfabeeee2,clean,True
 10006061,b56aa01b-17cd-4455-a247-a767b0ac8433,clean,True
 10006092,87c65da3-8615-4818-9575-8574c2c0a7f0,clean,True
-10006104,a4571d21-f284-47f0-a287-9dbd57e6a6f6,middle_hyphen,True
+10006104,a2879dbd-57e6-46f6-8ae5-96ce45809d25,middle_hyphen,True
 10006138,86ce0d1c-e95f-437a-bc8e-3dfd0e3aa66f,nickname,True
 10006192,bed89b7e-5749-4a32-af14-ce15f3699ad8,clean,True
 10006200,72d206bd-3c64-4792-9d6e-e237d8369a95,clean,True
@@ -266,7 +266,7 @@ a_cif,b_customer_id,kind,same_person
 10006421,864f8611-ecb9-4497-9d90-e5145c123444,middle_hyphen,True
 10006428,bda2c7e2-207c-4d1a-b4f3-daf5f670cef2,clean,True
 10006459,63a5a241-9aca-42e5-82a1-d76ad46288db,clean,True
-10006497,b6e0d4a1-8cf2-47a0-bec4-48f336a1d4c2,middle_hyphen,True
+10006497,36a1d4c2-9f49-42aa-9c2b-1eca42ef6a3a,middle_hyphen,True
 10006542,ff4c3d90-52e4-4845-b38d-a8a14f11e0b1,clean,True
 10006547,d109fc3f-39ee-4ce8-aea4-8ceb5094694f,clean,True
 10006578,a0a9eb12-ccea-4d68-bc76-0b074b85214a,clean,True
@@ -288,7 +288,7 @@ a_cif,b_customer_id,kind,same_person
 10007064,5cb556b7-f350-4bab-90aa-c147c5a0e8f6,typo,True
 10007109,f01ed4d6-26e5-4ac1-868f-7713faffdbb9,clean,True
 10007126,1feada05-d030-452c-af04-7aea453537d2,nickname,True
-10007174,3fefb41c-1e50-4b7e-9d40-124b9a08e006,middle_hyphen,True
+10007174,1d40124b-9a08-4006-9bcf-c45e3f440f8e,middle_hyphen,True
 10007225,852d2de8-d737-4108-92cc-ba418153cba8,clean,True
 10007291,8c61f1ab-d0fa-44be-aefb-34a4b98fef17,ssn_missing,True
 10007297,4faf959c-0e29-4c6a-b353-70e06da33d12,clean,True

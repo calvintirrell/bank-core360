@@ -9,9 +9,9 @@ How to work:
 5. Be concrete and brief. No preamble.
 
 As-of date for all recency and dormancy rules: 2026-09-30. 'Dormant' means an open account with no transactions in the 180 days before as-of (rule G-10).
-'6 months' or 'half a year' of inactivity maps to checking_dormant_180d / is_dormant_180d.
+'6 months' or 'half a year' of inactivity maps to checking_dormant_180d / is_dormant_180d. The transactions feed covers the 365 days before as-of; nothing older exists.
 
-Tables (DuckDB SQL):
+Tables (DuckDB SQL). customer_360 / account_360 / transactions are the resolved data; review_queue lists cross-core candidate pairs that were NOT merged (ER-05) and still appear as two separate customer_360 rows.
 
 customer_360  -- one row per resolved customer
   customer_key: text  -- entity resolution -> stable surrogate key
@@ -75,6 +75,27 @@ transactions  -- one row per transaction
   memo: text  -- title case
   direction: text ('credit' | 'debit')  -- credit / debit
 
+review_queue  -- one row per unmerged cross-core candidate pair awaiting human review
+  priority: integer (1 = most money at stake)  -- 1 = most money at stake
+  core_a_customer_key: text  -- customer_key of the Core A side (unmerged)
+  core_b_customer_key: text  -- customer_key of the Core B side (unmerged)
+  core_a_cif: text  -- pass-through
+  core_b_customer_id: text  -- pass-through
+  core_a_name: text  -- title case
+  core_b_name: text  -- first + last
+  dob: date  -- shared date of birth (blocking key)
+  confidence: double 0.55-0.80  -- tier 2 score
+  name_similarity: double 0-1  -- token-set ratio of name keys, 0-1
+  ssn_signal: double (1 equal, 0.5 missing)  -- 1 equal, 0.5 missing on a side
+  core_b_ssn_missing: boolean  -- true when Core B has no SSN last-4
+  phone_match: boolean  -- 10-digit phones equal
+  postal_code_match: boolean  -- postal codes equal
+  core_a_balance: double  -- deposits + loans of the Core A side
+  core_b_balance: double  -- deposits + loans of the Core B side
+  combined_balance: double  -- sum of both sides
+  core_a_open_accounts: integer  -- open accounts on the Core A side
+  core_b_open_accounts: integer  -- open accounts on the Core B side
+
 Rules referenced by lineage (cite by id when relevant):
   ER-03: Tier 1 deterministic: equal name key and equal SSN last-4 -> confidence 1.00
   ER-04: Tier 2 fuzzy: 0.40*name similarity (token-set ratio) + 0.30*ssn (1 equal / 0.5 missing) + 0.15*phone + 0.15*postal code; auto-merge >= 0.80
@@ -85,7 +106,8 @@ Rules referenced by lineage (cite by id when relevant):
   G-06: loan_balance = sum of open loan-category balances
   G-10: is_dormant_180d = open account with zero transactions in the 180 days before 2026-09-30
   G-11: checking_dormant_180d = any open checking account dormant per G-10
+  G-20: review_queue = candidate pairs scored 0.55-0.80 (ER-05), not merged; each side remains its own customer_360 row; priority = rank by combined balance
   S-10: Product taxonomy: A DDA/SAV/MTG/CDA and B checking/savings/mortgage/certificate_of_deposit -> checking/savings/mortgage/cd
   S-11: Core A CUR_BAL_CENTS integer cents / 100 -> dollars
 
-Notes: source_systems = 'core_a+core_b' means the person was found in both cores by entity resolution. customer_360.checking_dormant_180d is true if ANY open checking account is dormant (rule G-11), so a customer can also show recent activity on another checking account; use account_360 for per-account detail. Balances are dollars. All data is synthetic.
+Notes: source_systems = 'core_a+core_b' means the person was found in both cores by entity resolution. customer_360.checking_dormant_180d is true if ANY open checking account is dormant (rule G-11), so a customer can also show recent activity on another checking account; use account_360 for per-account detail. Core A stores no email, so email is null for Core A-only customers. Balances are dollars. All data is synthetic.

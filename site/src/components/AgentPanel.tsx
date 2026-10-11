@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { ready } from '../lib/duckdb'
 import { askLive, fromToolResult, replayRun, type AgentRun } from '../lib/agent'
 import { DEFAULT_MODEL, DemoCapError, MODELS, PROXY_URL, fetchQuota, routeLabel, type ModelId, type Quota } from '../lib/anthropic'
 import { loadAgentPrompt, loadAgentTool, loadReplay, type AgentTool, type Replay } from '../lib/lakehouse'
@@ -27,8 +28,10 @@ export function AgentPanel({ lineage }: { lineage: Lineage | null }) {
   const [prompt, setPrompt] = useState<string | null>(null)
   const [tool, setTool] = useState<AgentTool | null>(null)
   const [useReplay, setUseReplay] = useState(false)
+  const [engine, setEngine] = useState<'loading' | 'ready' | 'error'>('loading')
 
   useEffect(() => {
+    ready().then(() => setEngine('ready')).catch(() => setEngine('error'))
     fetchQuota().then(setQuota)
     loadReplay().then(setReplay).catch(() => setReplay(null))
     loadAgentPrompt().then(setPrompt).catch(() => setPrompt(null))
@@ -38,6 +41,7 @@ export function AgentPanel({ lineage }: { lineage: Lineage | null }) {
   const usingProxy = !apiKey && !!PROXY_URL
   const exhausted = usingProxy && (capHit || (quota !== null && quota.remaining_today <= 0))
   const liveAvailable = (!!apiKey || !!PROXY_URL) && !exhausted && !!prompt && !!tool
+  const engineReady = engine === 'ready'
   const replayActive = useReplay || !liveAvailable
 
   const cached = useMemo(() => replay?.questions.find((q) => q.question === question.trim()) ?? null, [replay, question])
@@ -82,7 +86,7 @@ export function AgentPanel({ lineage }: { lineage: Lineage | null }) {
             <button
               key={q.id}
               type="button"
-              disabled={busy}
+              disabled={busy || !engineReady}
               onClick={() => {
                 setQuestion(q.question)
                 ask(q.question)
@@ -104,10 +108,10 @@ export function AgentPanel({ lineage }: { lineage: Lineage | null }) {
           <button
             type="button"
             onClick={() => ask(question)}
-            disabled={busy || !question.trim() || (replayActive && !cached)}
+            disabled={busy || !engineReady || !question.trim() || (replayActive && !cached)}
             className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
           >
-            {busy ? 'Thinking…' : replayActive ? 'Show cached answer' : 'Ask'}
+            {!engineReady ? 'Loading engine…' : busy ? 'Thinking…' : replayActive ? 'Show cached answer' : 'Ask'}
           </button>
         </div>
 
@@ -134,13 +138,19 @@ export function AgentPanel({ lineage }: { lineage: Lineage | null }) {
             <input type="checkbox" checked={replayActive} disabled={!liveAvailable} onChange={(e) => setUseReplay(e.target.checked)} />
             cached answers only
           </label>
-          {usingProxy && quota && !exhausted && <span>Shared demo: {quota.remaining_today} of {quota.cap_today} API calls left today (a question uses 2 or more).</span>}
+          {engine === 'loading' && <span>Loading the in-browser query engine…</span>}
+          {engine === 'error' && <span className="text-red-700">The query engine failed to load; reload the page.</span>}
+          {usingProxy && quota && !exhausted && (
+            <span>
+              Shared demo: {quota.remaining_today} of {quota.cap_today} {quota.unit === 'questions' ? 'questions' : 'API calls'} left today.
+            </span>
+          )}
           {!!apiKey && <span>Using your key, direct to api.anthropic.com.</span>}
         </div>
 
         {exhausted && (
           <p role="alert" className="mt-2 text-sm font-medium text-red-600">
-            Daily demo limit reached ({quota?.cap_today ?? 8} API calls per day). Cached answers for the listed questions still work. Live questions return after midnight UTC
+            Daily demo limit reached ({quota?.cap_today ?? 8} {quota?.unit === 'questions' ? 'questions' : 'API calls'} per day). Cached answers for the listed questions still work. Live questions return after midnight UTC
             {byokRequested() ? ', or enter your own key.' : '.'}
           </p>
         )}

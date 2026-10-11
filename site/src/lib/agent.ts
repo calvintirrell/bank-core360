@@ -1,4 +1,4 @@
-import Anthropic from '@anthropic-ai/sdk'
+import type Anthropic from '@anthropic-ai/sdk'
 import { makeClient, translateError, type ModelId } from './anthropic'
 import { runSql, type Column, type ColumnKind, type QueryResult } from './duckdb'
 import type { AgentTool, ReplayEntry, ToolResult } from './lakehouse'
@@ -90,7 +90,8 @@ export type AskOptions = {
 
 /** Runs the question through Claude with the run_sql tool, executing SQL in DuckDB-WASM here. */
 export async function askLive(question: string, opts: AskOptions): Promise<AgentRun> {
-  const client = makeClient(opts.apiKey)
+  const questionId = crypto.randomUUID()
+  const client = await makeClient(opts.apiKey)
   const run: AgentRun = {
     question,
     route: opts.apiKey ? 'byok' : 'proxy',
@@ -117,14 +118,18 @@ export async function askLive(question: string, opts: AskOptions): Promise<Agent
     opts.onUpdate?.({ ...run })
     let res: Anthropic.Message
     try {
-      res = await client.messages.create({
-        model: opts.model,
-        max_tokens: 2048,
-        system: opts.prompt,
-        tools,
-        messages,
-        output_config: { effort: 'low' },
-      })
+      res = await client.messages.create(
+        {
+          model: opts.model,
+          max_tokens: 2048,
+          system: opts.prompt,
+          tools,
+          messages,
+          output_config: { effort: 'low' },
+        },
+        // The proxy counts questions, not calls: only x-demo-call: 1 counts against the daily cap.
+        { headers: { 'x-demo-question': questionId, 'x-demo-call': String(run.calls) } },
+      )
     } catch (e) {
       throw translateError(e)
     }
