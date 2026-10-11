@@ -27,13 +27,13 @@ function SampleTable({ name, sample }: { name: string; sample: RawSample }) {
   )
 }
 
-export function Cores({ samples, lineage }: { samples: RawSamples | null; lineage: Lineage | null }) {
+export function Cores({ samples, lineage, embedded }: { samples: RawSamples | null; lineage: Lineage | null; embedded?: boolean }) {
   const systems: Array<{ id: 'core_a' | 'core_b'; badge: string; color: string }> = [
     { id: 'core_a', badge: 'A', color: 'border-amber-300 bg-amber-50' },
     { id: 'core_b', badge: 'B', color: 'border-sky-300 bg-sky-50' },
   ]
   return (
-    <Section id="cores" title="Two cores that disagree" subtitle="Where it all started: the same bank after an acquisition, with a legacy in-house core and the acquired bank's core, each with its own ids, formats and product codes. These are the feeds exactly as landed in bronze.">
+    <Section id="cores" embedded={embedded} title="Two cores that disagree" subtitle="Where it all started: the same bank after an acquisition, with a legacy in-house core and the acquired bank's core, each with its own ids, formats and product codes. These are the feeds exactly as landed in bronze.">
       <div className="grid gap-4 md:grid-cols-2">
         {systems.map((s) => (
           <Card key={s.id} className={s.color}>

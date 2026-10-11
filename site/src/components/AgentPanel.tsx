@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ready } from '../lib/duckdb'
+import { useBankMode } from '../lib/ModeContext'
 import { askLive, fromToolResult, replayRun, type AgentRun } from '../lib/agent'
 import { DEFAULT_MODEL, DemoCapError, MODELS, PROXY_URL, fetchQuota, routeLabel, type ModelId, type Quota } from '../lib/anthropic'
 import { loadAgentPrompt, loadAgentTool, loadReplay, type AgentTool, type Replay } from '../lib/lakehouse'
@@ -14,6 +15,8 @@ function byokRequested(): boolean {
 }
 
 export function AgentPanel({ lineage }: { lineage: Lineage | null }) {
+  const bank = useBankMode()
+  const [showSettings, setShowSettings] = useState(false)
   const [apiKey, setApiKey] = useState(() => sessionStorage.getItem('bc360.apiKey') ?? '')
   const showByok = byokRequested() || apiKey !== '' || !PROXY_URL
   const models = showByok ? MODELS : MODELS.filter((m) => m.proxy)
@@ -79,7 +82,15 @@ export function AgentPanel({ lineage }: { lineage: Lineage | null }) {
   }
 
   return (
-    <Section id="ask" title="Ask in plain English" subtitle="Pick a question or type your own. Claude writes the SQL, runs it right here in your browser, and explains the answer. Every column in the result keeps a badge saying which core it came from.">
+    <Section
+      id="ask"
+      title="Ask in plain English"
+      subtitle={
+        bank
+          ? 'Pick a question or type your own. You get the answer in a sentence, and can open up how it was worked out.'
+          : 'Pick a question or type your own. Claude writes the SQL, runs it right here in your browser, and explains the answer. Every column in the result keeps a badge saying which core it came from.'
+      }
+    >
       <Card>
         <div className="mb-2 flex flex-wrap gap-1.5">
           {replay?.questions.map((q) => (
@@ -115,7 +126,18 @@ export function AgentPanel({ lineage }: { lineage: Lineage | null }) {
           </button>
         </div>
 
-        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
+        {bank && (
+          <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
+            <span>
+              {engine === 'loading' && 'Loading the in-browser query engine…'}
+              {engine === 'error' && <span className="text-red-700">The query engine failed to load; reload the page.</span>}
+            </span>
+            <button type="button" onClick={() => setShowSettings((v) => !v)} className="rounded-full border border-slate-300 px-2 py-0.5 hover:bg-slate-100" aria-expanded={showSettings} title="Model, cached answers, daily limit">
+              ⚙ {showSettings ? 'hide settings' : 'settings'}
+            </button>
+          </div>
+        )}
+        <div className={`mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 ${bank && !showSettings ? 'hidden' : ''}`}>
           {showByok && (
             <input
               type="password"
@@ -138,8 +160,8 @@ export function AgentPanel({ lineage }: { lineage: Lineage | null }) {
             <input type="checkbox" checked={replayActive} disabled={!liveAvailable} onChange={(e) => setUseReplay(e.target.checked)} />
             cached answers only
           </label>
-          {engine === 'loading' && <span>Loading the in-browser query engine…</span>}
-          {engine === 'error' && <span className="text-red-700">The query engine failed to load; reload the page.</span>}
+          {!bank && engine === 'loading' && <span>Loading the in-browser query engine…</span>}
+          {!bank && engine === 'error' && <span className="text-red-700">The query engine failed to load; reload the page.</span>}
           {usingProxy && quota && !exhausted && (
             <span>
               Shared demo: {quota.remaining_today} of {quota.cap_today} {quota.unit === 'questions' ? 'questions' : 'API calls'} left today.

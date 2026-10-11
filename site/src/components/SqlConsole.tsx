@@ -5,7 +5,7 @@ import { assertReadOnly, EXAMPLES } from '../lib/sql'
 import { ResultTable } from './ResultTable'
 import { Section } from './Section'
 
-export function SqlConsole({ lineage }: { lineage: Lineage | null }) {
+export function SqlConsole({ lineage, embedded }: { lineage: Lineage | null; embedded?: boolean }) {
   const [sql, setSql] = useState(EXAMPLES[0].sql)
   const [result, setResult] = useState<QueryResult | null>(null)
   const [error, setError] = useState('')
@@ -30,7 +30,7 @@ export function SqlConsole({ lineage }: { lineage: Lineage | null }) {
   }, [])
 
   return (
-    <Section id="sql" title="SQL console" subtitle="Real SQL over the gold layer, executed in your browser by DuckDB-WASM. Nothing leaves the page.">
+    <Section id="sql" embedded={embedded} title="SQL console" subtitle="Real SQL over the gold layer, executed in your browser by DuckDB-WASM. Nothing leaves the page.">
       <div className="mb-2 flex flex-wrap gap-1.5">
         {EXAMPLES.map((e) => (
           <button

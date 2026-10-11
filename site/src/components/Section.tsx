@@ -1,6 +1,14 @@
 import type { ReactNode } from 'react'
 
-export function Section({ id, title, subtitle, children }: { id: string; title: string; subtitle?: string; children: ReactNode }) {
+export function Section({ id, title, subtitle, embedded, children }: { id: string; title: string; subtitle?: string; embedded?: boolean; children: ReactNode }) {
+  if (embedded) {
+    return (
+      <div>
+        {subtitle && <p className="mb-4 text-sm text-slate-600">{subtitle}</p>}
+        {children}
+      </div>
+    )
+  }
   return (
     <section id={id} className="scroll-mt-20">
       <h2 className="text-xl font-semibold tracking-tight">{title}</h2>
