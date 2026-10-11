@@ -1,3 +1,4 @@
+import { WhyItMatters } from './WhyItMatters'
 import { useEffect, useState } from 'react'
 import { runSql, type QueryResult } from '../lib/duckdb'
 import type { Lineage } from '../lib/lineage'
@@ -80,6 +81,7 @@ export function SqlConsole({ lineage, embedded }: { lineage: Lineage | null; emb
           </p>
         </div>
       )}
+      <WhyItMatters id="sql" />
     </Section>
   )
 }

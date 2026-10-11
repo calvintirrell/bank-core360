@@ -1,3 +1,4 @@
+import { WhyItMatters } from './WhyItMatters'
 import type { MatchReport as Report } from '../lib/lakehouse'
 import { Card, Section, Stat } from './Section'
 
@@ -65,6 +66,7 @@ export function MatchReport({ report }: { report: Report | null }) {
           </ol>
         </Card>
       </div>
+      <WhyItMatters id="matching" />
     </Section>
   )
 }

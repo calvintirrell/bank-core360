@@ -1,6 +1,7 @@
 import type { Manifest, MatchReport } from '../lib/lakehouse'
 import { useBankMode } from '../lib/ModeContext'
 import { Stat } from './Section'
+import { Term } from './Term'
 
 const fmtDate = (iso?: string) =>
   iso ? new Date(iso + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : '…'
@@ -16,12 +17,12 @@ export function Hero({ manifest, report }: { manifest: Manifest | null; report: 
       {bank ? (
         <div className="mt-3 max-w-3xl space-y-2 text-slate-700">
           <p>
-            <strong>Harbor Bank just acquired Riverside Bank.</strong> Each ran its own core banking system, and the two disagree about almost
+            <strong>Harbor Bank just acquired Riverside Bank.</strong> Each ran its own <Term k="core">core banking system</Term>, and the two disagree about almost
             everything: who the customers are, what an account is called, even how a date is written.
           </p>
           <p>
-            This page is the first week after the deal. Both systems have been brought together, every customer resolved to one person, and
-            any question can be asked in plain English, with a note on where each number came from. All of it is synthetic data.
+            This page is the first week after the deal. Both systems have been brought together, every customer <Term k="entity-resolution">resolved to one person</Term>, and
+            any question can be asked in plain English, with a note on <Term k="lineage">where each number came from</Term>. All of it is synthetic data.
           </p>
         </div>
       ) : (
@@ -38,7 +39,7 @@ export function Hero({ manifest, report }: { manifest: Manifest | null; report: 
             <Stat label="people were in both systems" value={n(report?.auto_merged)} hint="they would have been counted twice" />
             <Stat label="accounts" value={n(manifest?.export.account_360.rows)} hint="checking, savings, mortgages, CDs" />
             <Stat label="transactions" value={n(manifest?.export.transactions.rows)} hint="the last twelve months" />
-            <Stat label="as of" value={fmtDate(manifest?.as_of)} hint="every 'dormant' or 'recent' is measured from here" />
+            <Stat label="as of" value={fmtDate(manifest?.as_of)} hint="every 'quiet' or 'recent' is measured from this date" />
           </>
         ) : (
           <>

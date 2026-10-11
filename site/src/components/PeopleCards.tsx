@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { formatCell, runSql, sqlString, type QueryResult } from '../lib/duckdb'
+import { Term } from './Term'
 
 const money = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
 const dateFmt = (v: unknown) => (v ? formatCell(v, 'date') : '')
@@ -65,7 +66,12 @@ export function PeopleCards({ rows }: { rows: Record<string, unknown>[] }) {
                   Deposits {money.format(Number(r.deposit_balance ?? 0))}
                   {Number(r.loan_balance) > 0 ? ` · owes ${money.format(Number(r.loan_balance))}` : ''}
                 </li>
-                {dormant && <li className="font-medium text-red-700">A checking account has been quiet for 6+ months{r.checking_last_txn_ts ? ` (last used ${dateFmt(r.checking_last_txn_ts)})` : ''}</li>}
+                {dormant && (
+                  <li className="font-medium text-red-700">
+                    A checking account has been <Term k="dormant">quiet for 6+ months</Term>
+                    {r.checking_last_txn_ts ? ` (last used ${dateFmt(r.checking_last_txn_ts)})` : ''}
+                  </li>
+                )}
                 {match && <li className="text-slate-500">{match}</li>}
               </ul>
               <div className="mt-2 text-xs text-slate-500">{open ? 'Hide accounts' : 'Show accounts'}</div>

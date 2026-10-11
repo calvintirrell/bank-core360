@@ -1,3 +1,4 @@
+import { WhyItMatters } from './WhyItMatters'
 import type { Lineage } from '../lib/lineage'
 import type { RawSample, RawSamples } from '../lib/lakehouse'
 import { Card, Section } from './Section'
@@ -48,6 +49,7 @@ export function Cores({ samples, lineage, embedded }: { samples: RawSamples | nu
           </Card>
         ))}
       </div>
+      <WhyItMatters id="cores" />
     </Section>
   )
 }

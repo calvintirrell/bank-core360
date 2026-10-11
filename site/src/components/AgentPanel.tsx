@@ -8,6 +8,8 @@ import { loadAgentPrompt, loadAgentTool, loadReplay, type AgentTool, type Replay
 import type { Lineage } from '../lib/lineage'
 import { ResultTable } from './ResultTable'
 import { Card, Section } from './Section'
+import { Term } from './Term'
+import { WhyItMatters } from './WhyItMatters'
 
 /** The own-key field is hidden by default; append ?byok to the URL to reveal it (or it shows
  *  automatically when a key is already stored in this tab's session). */
@@ -41,6 +43,21 @@ export function AgentPanel({ lineage }: { lineage: Lineage | null }) {
     loadAgentPrompt().then(setPrompt).catch(() => setPrompt(null))
     loadAgentTool().then(setTool).catch(() => setTool(null))
   }, [])
+
+  // Guided tour: show a saved answer with the evidence open, at no cost.
+  const [forceWork, setForceWork] = useState(false)
+  useEffect(() => {
+    const onTour = () => {
+      const first = replay?.questions[0]
+      if (!first) return
+      setQuestion(first.question)
+      setError('')
+      setForceWork(true)
+      setRun(replayRun(first))
+    }
+    window.addEventListener('bc360:tour-ask', onTour)
+    return () => window.removeEventListener('bc360:tour-ask', onTour)
+  }, [replay])
 
   const usingProxy = !apiKey && !!PROXY_URL
   const exhausted = usingProxy && (capHit || (quota !== null && quota.remaining_today <= 0))
@@ -180,14 +197,15 @@ export function AgentPanel({ lineage }: { lineage: Lineage | null }) {
         {error && <pre className="mt-2 whitespace-pre-wrap text-sm text-red-700">{error}</pre>}
       </Card>
 
-      {run && <Transcript run={run} lineage={lineage} apiKey={apiKey} busy={busy} bank={bank} onAsk={(q) => { setQuestion(q); ask(q) }} />}
+      {run && <Transcript run={run} lineage={lineage} apiKey={apiKey} busy={busy} bank={bank} forceWork={forceWork} onAsk={(q) => { setForceWork(false); setQuestion(q); ask(q) }} />}
+      <WhyItMatters id="ask" />
     </Section>
   )
 }
 
-function Transcript({ run, lineage, apiKey, busy, bank, onAsk }: { run: AgentRun; lineage: Lineage | null; apiKey: string; busy: boolean; bank: boolean; onAsk: (q: string) => void }) {
-  const [showWork, setShowWork] = useState(!bank)
-  useEffect(() => setShowWork(!bank), [bank, run.question])
+function Transcript({ run, lineage, apiKey, busy, bank, forceWork, onAsk }: { run: AgentRun; lineage: Lineage | null; apiKey: string; busy: boolean; bank: boolean; forceWork?: boolean; onAsk: (q: string) => void }) {
+  const [showWork, setShowWork] = useState(!bank || !!forceWork)
+  useEffect(() => setShowWork(!bank || !!forceWork), [bank, run.question, forceWork])
   const routeText = run.route === 'replay' ? 'cached answer (replay)' : routeLabel(apiKey)
   const last = run.steps.length ? run.steps[run.steps.length - 1] : null
   const headline = last?.result ? headlineFor(last.result) : null
@@ -249,7 +267,7 @@ function Transcript({ run, lineage, apiKey, busy, bank, onAsk }: { run: AgentRun
               ))}
               {bank && (
                 <p className="text-xs text-slate-500">
-                  Badges on each column say which bank the value came from: <b>A</b> Harbor Bank's system, <b>B</b> Riverside Bank's system, <b>A+B</b> both. Click one to see the exact field and the rule applied.
+                  Badges on each column say <Term k="lineage">where the value came from</Term>: <b>A</b> Harbor Bank's system, <b>B</b> Riverside Bank's system, <b>A+B</b> both. Click one for the sentence.
                 </p>
               )}
             </div>

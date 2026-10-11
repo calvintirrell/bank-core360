@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { runSql, type QueryResult } from '../lib/duckdb'
 import type { MatchReport } from '../lib/lakehouse'
 import { Card, Section, Stat } from './Section'
+import { Term } from './Term'
+import { WhyItMatters } from './WhyItMatters'
 
 const money = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
 
@@ -36,7 +38,12 @@ export function Decisions({ report }: { report: MatchReport | null }) {
     <Section
       id="matching"
       title="Are these the same person?"
-      subtitle="Both banks had their own customer lists. Before anyone is counted once, the two lists have to be matched, and the matching has to be checked. Here is how that went."
+      subtitle={
+        <>
+          Both banks had their own customer lists. Before anyone is counted once, the two lists have to be <Term k="entity-resolution">matched</Term>, and the ones the
+          matching is unsure about go to a <Term k="review-queue">review queue</Term>. Here is how that went.
+        </>
+      }
     >
       <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Stat label="people were in both banks and were merged automatically" value={report.auto_merged.toLocaleString()} hint="exact matches, or close matches scored above the line" />
@@ -73,6 +80,7 @@ export function Decisions({ report }: { report: MatchReport | null }) {
           </ul>
         </Card>
       </div>
+      <WhyItMatters id="matching" />
     </Section>
   )
 }

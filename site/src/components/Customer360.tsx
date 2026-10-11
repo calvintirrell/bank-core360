@@ -1,3 +1,4 @@
+import { WhyItMatters } from './WhyItMatters'
 import { useEffect, useState } from 'react'
 import { formatCell, runSql, sqlString, type QueryResult } from '../lib/duckdb'
 import type { Lineage } from '../lib/lineage'
@@ -171,6 +172,7 @@ export function Customer360({ lineage }: { lineage: Lineage | null }) {
           </span>
         )}
       </div>
+      <WhyItMatters id="customer360" />
       {!bank && selected && accounts && (
         <div className="mt-3 rounded-xl border border-violet-200 bg-violet-50/50 p-3">
           <div className="mb-2 flex items-center justify-between">

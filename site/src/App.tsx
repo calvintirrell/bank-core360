@@ -11,6 +11,7 @@ import { Hero } from './components/Hero'
 import { MatchReport } from './components/MatchReport'
 import { ModeToggle } from './components/ModeToggle'
 import { SqlConsole } from './components/SqlConsole'
+import { Tour, TourOffer } from './components/Tour'
 import { loadLakehouse, type Lakehouse } from './lib/lakehouse'
 import { ModeProvider, useBankMode } from './lib/ModeContext'
 
@@ -43,6 +44,7 @@ function Shell() {
   const bank = useBankMode()
   const [lh, setLh] = useState<Lakehouse | null>(null)
   const [error, setError] = useState('')
+  const [tour, setTour] = useState(false)
   useEffect(() => {
     loadLakehouse().then(setLh).catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
   }, [])
@@ -56,11 +58,17 @@ function Shell() {
           {nav.map(([href, label]) => (
             <a key={href} href={href} className="text-slate-600 hover:text-slate-900">{label}</a>
           ))}
+          {bank && (
+            <button type="button" onClick={() => setTour(true)} className="rounded-full border border-violet-300 bg-violet-50 px-3 py-1 text-xs font-medium text-violet-900 hover:bg-violet-100">
+              Show me around
+            </button>
+          )}
           <ModeToggle />
         </nav>
       </header>
       <main className="mx-auto max-w-6xl space-y-12 px-4 py-8">
         {error && <pre className="rounded-md bg-red-50 p-3 text-xs text-red-700">Could not load the lakehouse exports: {error}</pre>}
+        {bank && !tour && <TourOffer onStart={() => setTour(true)} />}
         <Hero manifest={lh?.manifest ?? null} report={lh?.matchReport ?? null} />
         <AgentPanel lineage={lh?.lineage ?? null} />
         <Customer360 lineage={lh?.lineage ?? null} />
@@ -97,6 +105,7 @@ function Shell() {
         </Collapsible>
         <Footer />
       </main>
+      <Tour open={tour} onClose={() => setTour(false)} />
     </div>
   )
 }

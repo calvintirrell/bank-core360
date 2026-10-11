@@ -1,3 +1,4 @@
+import { WhyItMatters } from './WhyItMatters'
 import { Section } from './Section'
 
 const STEPS: Array<{ title: string; detail: string; tone: string }> = [
@@ -29,6 +30,7 @@ export function Architecture({ embedded }: { embedded?: boolean }) {
       <p className="mt-3 text-xs text-slate-500">
         Pipeline: Python 3.12, Polars, delta-rs. Hosting: GitHub Pages, static. Query engine: DuckDB-WASM. Everything on this page is synthetic; no real customers.
       </p>
+      <WhyItMatters id="architecture" />
     </Section>
   )
 }

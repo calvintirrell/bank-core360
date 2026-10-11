@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 
-export function Section({ id, title, subtitle, embedded, children }: { id: string; title: string; subtitle?: string; embedded?: boolean; children: ReactNode }) {
+export function Section({ id, title, subtitle, embedded, children }: { id: string; title: string; subtitle?: ReactNode; embedded?: boolean; children: ReactNode }) {
   if (embedded) {
     return (
       <div>
