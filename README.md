@@ -77,7 +77,7 @@ The pipeline is deterministic for its seed, so CI commits new outputs only when 
 | bronze | Landed untouched, plus ingest metadata; batch 2 lands as Delta version 1 of each table | 6 Delta tables |
 | silver | One schema per entity: parsed dates, signed amounts, canonical product taxonomy, 10-digit phones, name keys | customers, accounts, transactions |
 | match | Entity resolution across cores: DOB blocking, SSN conflict reject, tier 1 deterministic, tier 2 fuzzy with a 0-1 confidence, review queue below threshold, and reviewer decisions from `data/decisions/` applied as tier 3 once their date has passed. Scored against ground truth. | customer_xref, match_review_queue |
-| gold | `customer_360` (one row per resolved customer, survivorship rules, product flags, dormancy), `account_360`, and `review_queue` (the unmerged candidate pairs, enriched for human triage) | 3 Delta tables |
+| gold | `customer_360` (one row per resolved customer, survivorship rules, product flags, dormancy), `account_360`, and `review_queue` (the unmerged candidate pairs, enriched for human triage); also mirrored as Apache Iceberg under `lakehouse/iceberg/` with a SQLite catalog, one snapshot per batch | 3 Delta tables + 3 Iceberg tables |
 | export | Plain Parquet for the browser, `lineage.json` mapping every gold column to its source core, field and transform rule, the replay cache and the agent's prompt | 4 Parquet + 7 JSON/MD |
 
 Synthetic scale: 2,000 people, 300 of them present in both cores across nine designed difficulty kinds (clean, nickname, typo, hyphenated name, missing SSN, changed last name, moved, and two that are deliberately undetectable), five same-name-and-birthday traps, about 4,900 accounts, 50,000 transactions. Every transform has a rule id (`S-xx`, `ER-xx`, `G-xx`) that the lineage file and the agent both cite.
@@ -113,7 +113,7 @@ What I would validate first: the included-row block sizes, whether per-instituti
 
 **Release 1, keep it current.** Delivered in part on this page: a second batch as a Delta version with an as-of switch, reviewer decisions that feed the next match run, and data-quality checks shown next to the tables. Still to do: incremental loads with change capture instead of full rebuilds, and scheduled checks that alert on drift.
 
-**Release 2, open it up.** An Iceberg mirror of the gold layer behind a catalog so the bank's BI tool and warehouse read the same tables the page does. Role-based masking applied at query time, so the analyst sees SSN last-4 and the branch manager does not. An audit log of every question, the SQL it produced and who asked. Export to the bank's own reporting tool.
+**Release 2, open it up.** The Iceberg mirror of the gold layer is on this page already, behind a local catalog; a product would put it behind a REST catalog so the bank's BI tool and warehouse read the same tables the page does. Role-based masking applied at query time, so the analyst sees SSN last-4 and the branch manager does not. An audit log of every question, the SQL it produced and who asked. Export to the bank's own reporting tool.
 
 **Later.** More core connectors, streaming feeds for the transaction table, and write-back actions such as flagging a customer for outreach from a query result.
 
@@ -150,7 +150,7 @@ uv run pytest
 cd site && pnpm install && pnpm dev
 ```
 
-Python 3.12, Polars, PyArrow, delta-rs, DuckDB, rapidfuzz, Faker. Site: Vite, React, Tailwind, DuckDB-WASM, the Anthropic TypeScript SDK. The proxy deploys with wrangler; set `PROXY_URL` as a repository variable and `ANTHROPIC_API_KEY` as an optional secret for the replay transcripts.
+Python 3.12, Polars, PyArrow, delta-rs, pyiceberg, DuckDB, rapidfuzz, Faker. Site: Vite, React, Tailwind, DuckDB-WASM, the Anthropic TypeScript SDK. The proxy deploys with wrangler; set `PROXY_URL` as a repository variable and `ANTHROPIC_API_KEY` as an optional secret for the replay transcripts.
 
 ## Data and privacy
 

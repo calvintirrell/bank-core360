@@ -126,6 +126,20 @@
     "customer_360": 2035,
     "review_queue": 27
   },
+  "iceberg": {
+    "account_360": {
+      "rows": 4927,
+      "snapshots": 1
+    },
+    "customer_360": {
+      "rows": 2035,
+      "snapshots": 1
+    },
+    "review_queue": {
+      "rows": 27,
+      "snapshots": 1
+    }
+  },
   "is_latest": false,
   "match": {
     "auto_merged": 265,

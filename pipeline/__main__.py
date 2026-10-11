@@ -20,6 +20,7 @@ from pipeline import (
     agent_prompt,
     bronze,
     gold,
+    iceberg,
     lineage,
     match,
     quality,
@@ -121,6 +122,7 @@ def main() -> int:
         s = silver.run(fresh)
         m = match.run()
         g = gold.run(fresh)
+        ice = iceberg.run(fresh)
         lineage.write()
         agent_prompt.write()
         e = export()
@@ -133,6 +135,7 @@ def main() -> int:
             "is_latest": not fresh,
             "versions": [{"as_of": d.isoformat(), "dir": "" if j == len(BATCHES) - 1 else f"v{j}"} for j, d in enumerate(BATCHES)],
             "delta_versions": {f"gold/{t}": table_version(GOLD, t) for t in ("customer_360", "account_360", "review_queue")},
+            "iceberg": {t: {"snapshots": v["snapshots"], "rows": v["rows"]} for t, v in ice.items()},
             "generator": gen[as_of.isoformat()],
             "bronze": b,
             "silver": s,
@@ -158,6 +161,7 @@ def main() -> int:
             },
         }
         if not fresh:
+            iceberg.write_summary(ice)
             (EXPORT / "raw_samples.json").write_text(json.dumps(raw_samples(), indent=1) + "\n")
             manifest["replay"] = replay.write()
             ch = changes(version_dir(BATCHES[i - 1]), EXPORT)

@@ -1,0 +1,29 @@
+{
+ "format": "Apache Iceberg (pyiceberg, SQLite catalog)",
+ "catalog": "lakehouse/iceberg/catalog.db",
+ "warehouse": "lakehouse/iceberg/warehouse",
+ "tables": {
+  "customer_360": {
+   "metadata_location": "lakehouse/iceberg/warehouse/gold/customer_360/metadata/00002-119227f7-976e-4671-b7e5-d22c5439cba5.metadata.json",
+   "snapshots": 3,
+   "current_snapshot_id": 2631898135010171083,
+   "rows": 2070,
+   "as_of": "2026-10-31"
+  },
+  "account_360": {
+   "metadata_location": "lakehouse/iceberg/warehouse/gold/account_360/metadata/00002-db266b55-d5f8-4359-8f3c-0ebb10790709.metadata.json",
+   "snapshots": 3,
+   "current_snapshot_id": 7336472272555359141,
+   "rows": 5021,
+   "as_of": "2026-10-31"
+  },
+  "review_queue": {
+   "metadata_location": "lakehouse/iceberg/warehouse/gold/review_queue/metadata/00002-f74f8716-f520-46de-a165-4b97428a1431.metadata.json",
+   "snapshots": 3,
+   "current_snapshot_id": 6185411815882396033,
+   "rows": 20,
+   "as_of": "2026-10-31"
+  }
+ },
+ "why": "Delta Lake is the system of record here; the Iceberg mirror lets a warehouse, query engine or BI tool that standardises on Iceberg read the same gold tables without a copy job."
+}

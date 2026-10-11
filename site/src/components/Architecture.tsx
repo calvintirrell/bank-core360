@@ -1,5 +1,7 @@
 import { WhyItMatters } from './WhyItMatters'
-import { Section } from './Section'
+import { useEffect, useState } from 'react'
+import { dataUrl } from '../lib/duckdb'
+import { Card, Section } from './Section'
 
 const STEPS: Array<{ title: string; detail: string; tone: string }> = [
   { title: 'Core A + Core B', detail: 'Raw feeds: pipe-delimited extracts and JSON lines, mismatched ids, dates and product codes', tone: 'border-amber-300 bg-amber-50' },
@@ -12,7 +14,16 @@ const STEPS: Array<{ title: string; detail: string; tone: string }> = [
   { title: 'Agent', detail: 'Claude writes the SQL, runs it here, explains the answer, with lineage on every column', tone: 'border-pink-300 bg-pink-50' },
 ]
 
+type IcebergSummary = { format: string; catalog: string; warehouse: string; why: string; tables: Record<string, { metadata_location: string; snapshots: number; rows: number; as_of: string }> }
+
 export function Architecture({ embedded }: { embedded?: boolean }) {
+  const [ice, setIce] = useState<IcebergSummary | null>(null)
+  useEffect(() => {
+    fetch(dataUrl('iceberg.json'))
+      .then((r) => (r.ok ? r.json() : null))
+      .then(setIce)
+      .catch(() => setIce(null))
+  }, [])
   return (
     <Section id="architecture" embedded={embedded} title="Architecture" subtitle="For the engineers: a medallion lakehouse built in Python on every push by GitHub Actions. The outputs, including the Delta transaction logs, are committed so anyone can open them.">
       <ol className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
@@ -30,6 +41,25 @@ export function Architecture({ embedded }: { embedded?: boolean }) {
       <p className="mt-3 text-xs text-slate-500">
         Pipeline: Python 3.12, Polars, delta-rs. Hosting: GitHub Pages, static. Query engine: DuckDB-WASM. Everything on this page is synthetic; no real customers.
       </p>
+      {ice && (
+        <div className="mt-4">
+          <Card title="Also mirrored as Apache Iceberg">
+            <p className="mb-2 text-xs text-slate-600">{ice.why}</p>
+            <ul className="space-y-1 text-xs">
+              {Object.entries(ice.tables).map(([t, v]) => (
+                <li key={t} className="flex flex-wrap items-baseline gap-x-3">
+                  <span className="font-mono font-semibold">gold.{t}</span>
+                  <span className="text-slate-600">{v.rows.toLocaleString()} rows · {v.snapshots} snapshots</span>
+                  <a className="font-mono text-slate-500 underline" href={`https://github.com/calvintirrell/bank-core360/blob/main/${v.metadata_location}`} target="_blank" rel="noreferrer">
+                    {v.metadata_location.split('/').slice(-1)[0]}
+                  </a>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2 text-xs text-slate-500">Catalog: {ice.catalog} (SQLite) · warehouse: {ice.warehouse}. Written with pyiceberg on every batch; a batch is a snapshot.</p>
+          </Card>
+        </div>
+      )}
       <WhyItMatters id="architecture" />
     </Section>
   )

@@ -242,6 +242,22 @@ def test_quality_checks_all_pass():
         assert c["plain"].endswith(".")
 
 
+def test_iceberg_mirror_matches_gold(con):
+    """The Iceberg mirror holds the same rows as the exported gold tables, with one snapshot per batch."""
+    from pyiceberg.catalog import load_catalog
+
+    from pipeline.iceberg import ICEBERG
+
+    summary = json.loads((EXPORT / "iceberg.json").read_text())
+    cat = load_catalog("local", type="sql", uri=f"sqlite:///{ICEBERG / 'catalog.db'}", warehouse=f"file://{ICEBERG / 'warehouse'}")
+    for name in ("customer_360", "account_360", "review_queue"):
+        tbl = cat.load_table(f"gold.{name}")
+        rows = tbl.scan().to_arrow().num_rows
+        assert rows == con.sql(f"SELECT count(*) FROM {name}").fetchone()[0]
+        assert summary["tables"][name]["rows"] == rows
+        assert len(list(tbl.snapshots())) >= 2  # batch 1 append, batch 2 overwrite
+
+
 # --- lineage ------------------------------------------------------------------------------------
 
 
