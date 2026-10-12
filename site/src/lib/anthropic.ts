@@ -40,6 +40,9 @@ export function translateError(e: unknown): unknown {
   if (status === 429 && /monthly demo cap/i.test(message)) return new DemoCapError('Monthly demo limit reached.')
   if (status === 429 && /already used its/i.test(message)) return new Error('This question used up its call allowance. Ask it again to start a fresh one.')
   if (status === 503 && /switched off/i.test(message)) return new Error('The shared demo proxy is switched off right now.')
+  if (status === 503 && /verify the prompt/i.test(message)) return new Error('The shared demo proxy could not verify this page right now. Try again in a moment.')
+  if (status === 400 && /reload the page/i.test(message)) return new Error('This page is out of date with the demo proxy. Reload the page and ask again.')
+  if (status === 504) return new Error('The model took too long to answer. Try again.')
   return e
 }
 

@@ -1,10 +1,12 @@
 /** 8B: a question is charged only when the upstream call succeeds, never for an SDK retry. */
-import { afterEach, describe, expect, it } from 'vitest'
-import { vi } from 'vitest'
-import worker from '../src/index'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import worker, { _resetPromptCache } from '../src/index'
 import { makeCtx, makeEnv, messagesRequest, month, stubUpstream, today } from './helpers'
 
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => {
+  vi.unstubAllGlobals()
+  _resetPromptCache()
+})
 
 async function call(env: ReturnType<typeof makeEnv>['env'], req: Request) {
   const { ctx, settle } = makeCtx()
@@ -19,7 +21,7 @@ describe('question metering', () => {
     const upstream = stubUpstream(200)
     const res = await call(env, messagesRequest({ 'x-demo-call': '1' }))
     expect(res.status).toBe(200)
-    expect(upstream).toHaveBeenCalledTimes(1)
+    expect(upstream.upstreamCalls).toHaveLength(1)
     expect(store.get(`qcount:${today()}`)).toBe('1')
     expect(store.get(`qcount:${month()}`)).toBe('1')
     expect(store.get(`ccount:${today()}`)).toBe('1')
@@ -72,7 +74,7 @@ describe('question metering', () => {
     const res = await call(env, messagesRequest({ 'x-demo-call': '1' }))
     expect(res.status).toBe(429)
     expect(await res.text()).toMatch(/daily demo cap \(2 questions\)/)
-    expect(upstream).not.toHaveBeenCalled()
+    expect(upstream.upstreamCalls).toHaveLength(0)
   })
 
   it('refuses before forwarding once the monthly cap is reached', async () => {
@@ -82,7 +84,7 @@ describe('question metering', () => {
     const res = await call(env, messagesRequest({ 'x-demo-call': '1' }))
     expect(res.status).toBe(429)
     expect(await res.text()).toMatch(/monthly demo cap/)
-    expect(upstream).not.toHaveBeenCalled()
+    expect(upstream.upstreamCalls).toHaveLength(0)
   })
 
   it('enforces the hard call ceiling whatever the headers say', async () => {
@@ -92,7 +94,7 @@ describe('question metering', () => {
     const res = await call(env, messagesRequest({ 'x-demo-call': '2' }))
     expect(res.status).toBe(429)
     expect(await res.text()).toMatch(/call ceiling/)
-    expect(upstream).not.toHaveBeenCalled()
+    expect(upstream.upstreamCalls).toHaveLength(0)
   })
 
   it('refuses a call index beyond the per-question allowance', async () => {
@@ -101,7 +103,7 @@ describe('question metering', () => {
     const res = await call(env, messagesRequest({ 'x-demo-call': '3' }))
     expect(res.status).toBe(429)
     expect(await res.text()).toMatch(/already used its 2 API calls/)
-    expect(upstream).not.toHaveBeenCalled()
+    expect(upstream.upstreamCalls).toHaveLength(0)
   })
 
   it('passes only content-type and request-id back from upstream, plus the remaining counters', async () => {

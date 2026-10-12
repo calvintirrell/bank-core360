@@ -12,6 +12,10 @@ MAX_TOKENS_CAP = "2048"
 DAILY_CAP = "8"
 MONTHLY_CAP = "240"
 CALLS_PER_QUESTION = "5"
+# The only system prompts accepted are the ones the site serves (every as-of version's agent_prompt.md).
+PROMPT_SOURCE = "https://calvintirrell.github.io/bank-core360/data"
+# anthropic-beta values allowed through (comma-separated); empty = the header is dropped.
+ALLOWED_BETAS = ""
 
 # Per-IP rate limit: 12 requests per 60 s (burst protection; the question caps do the real limiting).
 [[ratelimits]]
@@ -22,7 +26,8 @@ simple = { limit = 12, period = 60 }
 # Usage counters + kill switch (KV free tier). Disable instantly with:
 #   pnpm exec wrangler kv key put --binding USAGE disabled 1 --remote
 # Re-enable with:
-#   pnpm exec wrangler kv key delete --binding USAGE disabled --remote id is filled in by `wrangler kv namespace create USAGE`.
+#   pnpm exec wrangler kv key delete --binding USAGE disabled --remote
+# (the id below was filled in by `wrangler kv namespace create USAGE`)
 [[kv_namespaces]]
 binding = "USAGE"
 id = "bc2f476d010d4d7fa0ce6fa9e0ce167d"
