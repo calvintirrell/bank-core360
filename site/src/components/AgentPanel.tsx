@@ -4,7 +4,7 @@ import { useBankMode } from '../lib/ModeContext'
 import { useAsOf, versionDir } from '../lib/AsOfContext'
 import { askLive, fromToolResult, headlineFor, replayRun, type AgentRun } from '../lib/agent'
 import { HeadlineView } from './Headline'
-import { DEFAULT_MODEL, DemoCapError, MODELS, PROXY_URL, fetchQuota, routeLabel, type ModelId, type Quota } from '../lib/anthropic'
+import { DEFAULT_MODEL, DemoCapError, MODELS, PROXY_URL, demoStatus, fetchQuota, routeLabel, type ModelId, type Quota } from '../lib/anthropic'
 import { loadAgentPrompt, loadAgentTool, loadReplay, type AgentTool, type Replay } from '../lib/lakehouse'
 import type { Lineage } from '../lib/lineage'
 import { ResultTable } from './ResultTable'
@@ -25,8 +25,12 @@ export function AgentPanel({ lineage }: { lineage: Lineage | null }) {
   const [showSettings, setShowSettings] = useState(false)
   const [apiKey, setApiKey] = useState(() => sessionStorage.getItem('bc360.apiKey') ?? '')
   const showByok = byokRequested() || apiKey !== '' || !PROXY_URL
-  const models = showByok ? MODELS : MODELS.filter((m) => m.proxy)
+  // Own-key-only models are offered only while a key is present; the proxy would refuse them.
+  const models = apiKey || !PROXY_URL ? MODELS : MODELS.filter((m) => m.proxy)
   const [model, setModel] = useState<ModelId>(DEFAULT_MODEL)
+  useEffect(() => {
+    if (!models.some((m) => m.id === model)) setModel(DEFAULT_MODEL)
+  }, [models, model])
   const [question, setQuestion] = useState('')
   const [busy, setBusy] = useState(false)
   const [run, setRun] = useState<AgentRun | null>(null)
@@ -63,7 +67,8 @@ export function AgentPanel({ lineage }: { lineage: Lineage | null }) {
   }, [replay])
 
   const usingProxy = !apiKey && !!PROXY_URL
-  const exhausted = usingProxy && (capHit || (quota !== null && quota.remaining_today <= 0))
+  const status = demoStatus(quota, capHit, usingProxy)
+  const exhausted = status.exhausted
   const liveAvailable = (!!apiKey || !!PROXY_URL) && !exhausted && !!prompt && !!tool
   const engineReady = engine === 'ready'
   const replayActive = useReplay || !liveAvailable
@@ -134,7 +139,7 @@ export function AgentPanel({ lineage }: { lineage: Lineage | null }) {
           <input
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && !busy && ask(question)}
+            onKeyDown={(e) => e.key === 'Enter' && !busy && engineReady && ask(question)}
             placeholder="Ask anything about these customers, accounts or transactions…"
             className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm"
           />
@@ -186,7 +191,9 @@ export function AgentPanel({ lineage }: { lineage: Lineage | null }) {
           {!bank && engine === 'error' && <span className="text-red-700">The query engine failed to load; reload the page.</span>}
           {usingProxy && quota && !exhausted && (
             <span>
-              Shared demo: {quota.remaining_today} of {quota.cap_today} {quota.unit === 'questions' ? 'questions' : 'API calls'} left today.
+              Shared demo: {quota.remaining_today} of {quota.cap_today} {quota.unit === 'questions' ? 'questions' : 'API calls'} left today
+              {quota.remaining_month < quota.cap_month ? `, ${quota.remaining_month} of ${quota.cap_month} this month` : ''}
+              {status.resetsAt ? ` · resets at ${status.resetsAt}` : ''}.
             </span>
           )}
           {!!apiKey && <span>Using your key, direct to api.anthropic.com.</span>}
@@ -194,8 +201,9 @@ export function AgentPanel({ lineage }: { lineage: Lineage | null }) {
 
         {exhausted && (
           <p role="alert" className="mt-2 text-sm font-medium text-red-600">
-            Daily demo limit reached ({quota?.cap_today ?? 8} {quota?.unit === 'questions' ? 'questions' : 'API calls'} per day). Cached answers for the listed questions still work. Live questions return after midnight UTC
-            {byokRequested() ? ', or enter your own key.' : '.'}
+            {status.reason}
+            {status.resetsAt ? ` Live questions return at ${status.resetsAt}` : ''}
+            {byokRequested() ? (status.resetsAt ? ', or enter your own key.' : ' Or enter your own key.') : status.resetsAt ? '.' : ''}
           </p>
         )}
         {error && <pre className="mt-2 whitespace-pre-wrap text-sm text-red-700">{error}</pre>}

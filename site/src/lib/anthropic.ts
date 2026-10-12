@@ -58,6 +58,40 @@ export type Quota = {
   resets_at_utc: string
 }
 
+export type DemoStatus = {
+  /** Live questions through the proxy are not possible right now. */
+  exhausted: boolean
+  /** Why, in a sentence for the page; empty when not exhausted. */
+  reason: string
+  /** When the daily counter resets, in the viewer's local time; empty if unknown. */
+  resetsAt: string
+}
+
+/** What the Ask panel should say about the shared demo, from the proxy's quota and the last call. */
+export function demoStatus(quota: Quota | null, capHit: boolean, usingProxy: boolean): DemoStatus {
+  if (!usingProxy) return { exhausted: false, reason: '', resetsAt: '' }
+  const resetsAt = quota?.resets_at_utc ? formatReset(quota.resets_at_utc) : ''
+  const unit = quota?.unit === 'questions' || !quota ? 'questions' : 'API calls'
+  if (quota?.disabled) return { exhausted: true, reason: 'The shared demo is paused right now. Cached answers for the listed questions still work.', resetsAt: '' }
+  if (quota && quota.remaining_month <= 0) {
+    return { exhausted: true, reason: `Monthly demo limit reached (${quota.cap_month} ${unit} a month). Cached answers for the listed questions still work.`, resetsAt: '' }
+  }
+  if (capHit || (quota !== null && quota.remaining_today <= 0)) {
+    return {
+      exhausted: true,
+      reason: `Daily demo limit reached (${quota?.cap_today ?? 8} ${unit} per day). Cached answers for the listed questions still work.`,
+      resetsAt,
+    }
+  }
+  return { exhausted: false, reason: '', resetsAt }
+}
+
+function formatReset(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+}
+
 export async function fetchQuota(): Promise<Quota | null> {
   if (!PROXY_URL) return null
   try {
