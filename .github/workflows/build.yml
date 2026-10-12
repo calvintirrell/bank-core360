@@ -50,9 +50,29 @@ jobs:
           name: lakehouse-export
           path: lakehouse/export
 
+  proxy:
+    name: proxy (typecheck + guard tests)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: proxy/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+        working-directory: proxy
+      - run: pnpm typecheck
+        working-directory: proxy
+      - run: pnpm test
+        working-directory: proxy
+
   site:
     name: build site
-    needs: pipeline
+    needs: [pipeline, proxy]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
