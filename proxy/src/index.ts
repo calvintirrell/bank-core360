@@ -7,8 +7,11 @@
  * follow-ups, so only call 1 counts against the question caps. KV is eventually consistent, so the
  * client declares this rather than the Worker inferring it; the abuse backstop is a hard ceiling
  * of DAILY_CAP * CALLS_PER_QUESTION calls per day regardless of headers. A call without the header
- * counts as a question of its own. Counters only increment for requests actually forwarded. The browser never sees the key; it calls this Worker with
- * the same request shape it would send to api.anthropic.com (the SDK just gets a different baseURL).
+ * counts as a question of its own. Counters increment only after the upstream call succeeded
+ * (2xx), so an Anthropic outage or a rejected request never costs the visitor a question, and a
+ * request the SDK marks as a retry (x-stainless-retry-count > 0) is never counted at all. The
+ * browser never sees the key; it calls this Worker with the same request shape it would send to
+ * api.anthropic.com (the SDK just gets a different baseURL).
  */
 
 export interface Env {
@@ -54,7 +57,7 @@ function err(status: number, type: string, message: string, headers?: Headers): 
 }
 
 export default {
-  async fetch(req: Request, env: Env): Promise<Response> {
+  async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const origin = req.headers.get('Origin') ?? ''
     const allowedOrigins = env.ALLOWED_ORIGINS.split(',').map((s) => s.trim())
     const originOk = allowedOrigins.includes(origin)
@@ -130,13 +133,14 @@ export default {
     delete body.mcp_servers
     delete body.container
 
-    // Daily + monthly caps in questions; increment only for requests we actually forward.
+    // Daily + monthly caps in questions. Checked before forwarding; counted only after success.
     const now = new Date().toISOString()
     const k = keys(now)
     const dayCap = Number(env.DAILY_CAP)
     const monthCap = Number(env.MONTHLY_CAP)
     const perQuestion = Number(env.CALLS_PER_QUESTION)
     const callIndex = Number(req.headers.get('x-demo-call') ?? '1') || 1
+    const isRetry = (Number(req.headers.get('x-stainless-retry-count') ?? '0') || 0) > 0
     const [usedDay, usedMonth, usedCalls] = await Promise.all([env.USAGE.get(k.day), env.USAGE.get(k.month), env.USAGE.get(k.calls)])
     let d = Number(usedDay ?? '0')
     let m = Number(usedMonth ?? '0')
@@ -147,7 +151,6 @@ export default {
     if (callIndex > perQuestion) {
       return err(429, 'rate_limit_error', `this question already used its ${perQuestion} API calls; ask it again as a new question`, cors)
     }
-    const writes: Promise<void>[] = [env.USAGE.put(k.calls, String(c + 1), { expirationTtl: DAY_TTL })]
     if (callIndex === 1) {
       if (d >= dayCap) {
         return err(429, 'rate_limit_error', `daily demo cap (${dayCap} questions) reached; try again tomorrow or use your own key`, cors)
@@ -155,11 +158,7 @@ export default {
       if (m >= monthCap) {
         return err(429, 'rate_limit_error', `monthly demo cap (${monthCap} questions) reached; use your own key`, cors)
       }
-      d += 1
-      m += 1
-      writes.push(env.USAGE.put(k.day, String(d), { expirationTtl: DAY_TTL }), env.USAGE.put(k.month, String(m), { expirationTtl: MONTH_TTL }))
     }
-    await Promise.all(writes)
 
     const upstream = await fetch(UPSTREAM, {
       method: 'POST',
@@ -171,6 +170,17 @@ export default {
       },
       body: JSON.stringify(body),
     })
+
+    // Count only a forwarded call that succeeded, and never an SDK retry of one already counted.
+    if (upstream.ok && !isRetry) {
+      const writes = [env.USAGE.put(k.calls, String(c + 1), { expirationTtl: DAY_TTL })]
+      if (callIndex === 1) {
+        d += 1
+        m += 1
+        writes.push(env.USAGE.put(k.day, String(d), { expirationTtl: DAY_TTL }), env.USAGE.put(k.month, String(m), { expirationTtl: MONTH_TTL }))
+      }
+      ctx.waitUntil(Promise.all(writes))
+    }
 
     // Stream (or pass) the upstream response through unchanged, with CORS added.
     const h = new Headers(cors)

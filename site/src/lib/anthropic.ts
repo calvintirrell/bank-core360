@@ -24,7 +24,9 @@ export async function makeClient(apiKey: string): Promise<Anthropic> {
   const { default: Client } = await import('@anthropic-ai/sdk')
   if (apiKey) return new Client({ apiKey, dangerouslyAllowBrowser: true })
   if (!PROXY_URL) throw new Error('No API key entered and no shared proxy configured for this build.')
-  return new Client({ apiKey: 'proxy', baseURL: PROXY_URL, dangerouslyAllowBrowser: true })
+  // No SDK retries through the proxy: a retry re-sends the same x-demo-call header, and although the
+  // proxy ignores requests marked as retries, one failed call should surface to the user, not loop.
+  return new Client({ apiKey: 'proxy', baseURL: PROXY_URL, dangerouslyAllowBrowser: true, maxRetries: 0 })
 }
 
 /** Thrown when the shared proxy's daily or monthly demo cap has been reached. */
