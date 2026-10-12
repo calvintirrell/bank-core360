@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ready } from '../lib/duckdb'
 import { useBankMode } from '../lib/ModeContext'
 import { useAsOf, versionDir } from '../lib/AsOfContext'
-import { askLive, fromToolResult, headlineFor, replayRun, type AgentRun } from '../lib/agent'
+import { askLive, fromToolResult, headlineFor, isAbortError, replayRun, type AgentRun } from '../lib/agent'
 import { HeadlineView } from './Headline'
 import { DEFAULT_MODEL, DemoCapError, MODELS, PROXY_URL, demoStatus, fetchQuota, routeLabel, type ModelId, type Quota } from '../lib/anthropic'
 import { loadAgentPrompt, loadAgentTool, loadReplay, type AgentTool, type Replay } from '../lib/lakehouse'
@@ -42,6 +42,10 @@ export function AgentPanel({ lineage }: { lineage: Lineage | null }) {
   const [tool, setTool] = useState<AgentTool | null>(null)
   const [useReplay, setUseReplay] = useState(false)
   const [engine, setEngine] = useState<'loading' | 'ready' | 'error'>('loading')
+  // The in-flight question. A new question, an as-of change (this panel is remounted) or leaving
+  // the page aborts it, so no stale answer lands and no API call is spent on a question nobody sees.
+  const inflight = useRef<AbortController | null>(null)
+  useEffect(() => () => inflight.current?.abort(), [])
 
   useEffect(() => {
     ready().then(() => setEngine('ready')).catch(() => setEngine('error'))
@@ -88,13 +92,18 @@ export function AgentPanel({ lineage }: { lineage: Lineage | null }) {
       setRun(replayRun(entry))
       return
     }
+    inflight.current?.abort()
+    const controller = new AbortController()
+    inflight.current = controller
     setBusy(true)
     setRun(null)
     try {
       sessionStorage.setItem('bc360.apiKey', apiKey)
-      const result = await askLive(text, { apiKey, model, prompt: prompt!, tool: tool!, onUpdate: setRun })
+      const result = await askLive(text, { apiKey, model, prompt: prompt!, tool: tool!, onUpdate: setRun, signal: controller.signal })
+      if (controller.signal.aborted) return
       setRun(result)
     } catch (e) {
+      if (isAbortError(e) || controller.signal.aborted) return
       if (e instanceof DemoCapError) {
         setCapHit(true)
         if (entry) setRun(replayRun(entry))
@@ -102,8 +111,11 @@ export function AgentPanel({ lineage }: { lineage: Lineage | null }) {
         setError(e instanceof Error ? e.message : String(e))
       }
     } finally {
-      setBusy(false)
-      if (usingProxy) fetchQuota().then(setQuota)
+      if (inflight.current === controller) {
+        inflight.current = null
+        setBusy(false)
+        if (usingProxy) fetchQuota().then(setQuota)
+      }
     }
   }
 

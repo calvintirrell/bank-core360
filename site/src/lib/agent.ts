@@ -131,18 +131,32 @@ export function headlineFor(result: ToolResult | null): Headline | null {
   return null
 }
 
+/** The one SDK method the loop uses; injectable so the loop is testable without the network. */
+export type MessagesClient = { messages: { create: (body: Anthropic.MessageCreateParamsNonStreaming, options?: Anthropic.RequestOptions) => Promise<Anthropic.Message> } }
+
 export type AskOptions = {
   apiKey: string
   model: ModelId
   prompt: string
   tool: AgentTool
   onUpdate?: (run: AgentRun) => void
+  /** Aborting stops the loop: no further API calls, no further SQL. The promise rejects with an AbortError. */
+  signal?: AbortSignal
+  client?: MessagesClient
+}
+
+export function isAbortError(e: unknown): boolean {
+  return (e instanceof DOMException && e.name === 'AbortError') || (e instanceof Error && e.name === 'AbortError')
+}
+
+function throwIfAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) throw new DOMException('The question was cancelled.', 'AbortError')
 }
 
 /** Runs the question through Claude with the run_sql tool, executing SQL in DuckDB-WASM here. */
 export async function askLive(question: string, opts: AskOptions): Promise<AgentRun> {
   const questionId = crypto.randomUUID()
-  const client = await makeClient(opts.apiKey)
+  const client: MessagesClient = opts.client ?? (await makeClient(opts.apiKey))
   const run: AgentRun = {
     question,
     route: opts.apiKey ? 'byok' : 'proxy',
@@ -166,6 +180,7 @@ export async function askLive(question: string, opts: AskOptions): Promise<Agent
   const messages: Anthropic.MessageParam[] = [{ role: 'user', content: question }]
 
   while (run.calls < MAX_CALLS) {
+    throwIfAborted(opts.signal)
     run.calls += 1
     opts.onUpdate?.({ ...run })
     let res: Anthropic.Message
@@ -180,9 +195,10 @@ export async function askLive(question: string, opts: AskOptions): Promise<Agent
           output_config: { effort: 'low' },
         },
         // The proxy counts questions, not calls: only x-demo-call: 1 counts against the daily cap.
-        { headers: { 'x-demo-question': questionId, 'x-demo-call': String(run.calls) } },
+        { headers: { 'x-demo-question': questionId, 'x-demo-call': String(run.calls) }, signal: opts.signal },
       )
     } catch (e) {
+      if (isAbortError(e)) throw e
       throw translateError(e)
     }
     run.usage.input_tokens += res.usage.input_tokens
@@ -191,10 +207,20 @@ export async function askLive(question: string, opts: AskOptions): Promise<Agent
     messages.push({ role: 'assistant', content: res.content })
 
     if (res.stop_reason === 'tool_use') {
+      if (run.calls >= MAX_CALLS) {
+        // The result could never be sent back: record the request, run nothing.
+        for (const block of res.content) {
+          if (block.type !== 'tool_use') continue
+          const sql = String((block.input as { sql?: unknown } | null)?.sql ?? '')
+          run.steps.push({ sql, result: null, error: `Not run: the ${MAX_CALLS}-call budget for one question is used up.` })
+        }
+        break
+      }
       const results: Anthropic.ToolResultBlockParam[] = []
       for (const block of res.content) {
         if (block.type !== 'tool_use') continue
-        const sql = String((block.input as { sql?: unknown }).sql ?? '')
+        throwIfAborted(opts.signal)
+        const sql = String((block.input as { sql?: unknown } | null)?.sql ?? '')
         try {
           const r = await runSql(assertReadOnly(sql))
           const tr = toToolResult(r)
