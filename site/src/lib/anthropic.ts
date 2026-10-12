@@ -38,6 +38,7 @@ export function translateError(e: unknown): unknown {
   const message = e instanceof Error ? e.message : ''
   if (status === 429 && /daily demo cap/i.test(message)) return new DemoCapError('Daily demo limit reached.')
   if (status === 429 && /monthly demo cap/i.test(message)) return new DemoCapError('Monthly demo limit reached.')
+  // Reachable only if the page's call budget (agent.ts MAX_CALLS) ever exceeds the proxy's CALLS_PER_QUESTION.
   if (status === 429 && /already used its/i.test(message)) return new Error('This question used up its call allowance. Ask it again to start a fresh one.')
   if (status === 503 && /switched off/i.test(message)) return new Error('The shared demo proxy is switched off right now.')
   if (status === 503 && /verify the prompt/i.test(message)) return new Error('The shared demo proxy could not verify this page right now. Try again in a moment.')

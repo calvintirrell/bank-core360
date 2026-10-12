@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, type ReactNode } from 'react'
-import { versionDir, type VersionId } from './versions'
+import type { VersionId } from './versions'
 
 export { versionDir, versionIds, type VersionId } from './versions'
 

@@ -76,7 +76,9 @@ export function Customer360({ lineage }: { lineage: Lineage | null }) {
     runSql(
       `SELECT source_system, product_type, source_account_id, balance, is_open, opened_on, last_txn_ts, txn_count_90d, is_dormant_180d
        FROM account_360 WHERE customer_key = ${sqlString(selected)} ORDER BY source_system, product_type`,
-    ).then(setAccounts)
+    )
+      .then(setAccounts)
+      .catch((e: unknown) => setError(`Could not load that customer's accounts: ${e instanceof Error ? e.message : String(e)}`))
   }, [selected])
 
   const pages = total === null ? 0 : Math.ceil(total / PAGE)

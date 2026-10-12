@@ -104,7 +104,7 @@ export async function loadLakehouse(dir = ''): Promise<Lakehouse> {
     loadJson<MatchReport>('match_report.json', dir),
     loadJson<RawSamples>('raw_samples.json'),
     loadJson<Changes>('changes.json').catch(() => null),
-    dir ? loadJson<Manifest>('manifest.json') : Promise.resolve(null as unknown as Manifest),
+    dir ? loadJson<Manifest>('manifest.json') : Promise.resolve<Manifest | null>(null),
   ])
   return { lineage, manifest, matchReport, rawSamples, changes, latest: latest ?? manifest }
 }

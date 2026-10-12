@@ -30,12 +30,16 @@ function matchText(r: Record<string, unknown>): string | null {
 export function PeopleCards({ rows }: { rows: Record<string, unknown>[] }) {
   const [selected, setSelected] = useState<string | null>(null)
   const [accounts, setAccounts] = useState<QueryResult | null>(null)
+  const [accountsError, setAccountsError] = useState('')
   useEffect(() => {
+    setAccountsError('')
     if (!selected) return setAccounts(null)
     runSql(
       `SELECT source_system, product_type, balance, is_open, opened_on, last_txn_ts, days_since_last_txn, is_dormant_180d
        FROM account_360 WHERE customer_key = ${sqlString(selected)} ORDER BY is_open DESC, source_system, product_type`,
-    ).then(setAccounts)
+    )
+      .then(setAccounts)
+      .catch((e: unknown) => setAccountsError(e instanceof Error ? e.message : String(e)))
   }, [selected])
 
   return (
@@ -79,6 +83,7 @@ export function PeopleCards({ rows }: { rows: Record<string, unknown>[] }) {
               </ul>
               <div className="mt-2 text-xs text-slate-500">{open ? 'Hide accounts' : 'Show accounts'}</div>
             </button>
+            {open && accountsError && <p className="mt-3 text-sm text-red-700">Could not load this person's accounts: {accountsError}</p>}
             {open && accounts && (
               <ul className="mt-3 divide-y divide-slate-100 border-t border-slate-100 text-sm">
                 {accounts.rows.map((a, i) => (

@@ -10,6 +10,7 @@ const money = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD
 /** Bank-mode version of the matching scorecard: decisions, not statistics, plus one worked example. */
 export function Decisions({ report }: { report: MatchReport | null }) {
   const [example, setExample] = useState<QueryResult | null>(null)
+  const [exampleError, setExampleError] = useState('')
   useEffect(() => {
     runSql(
       `SELECT core_a_name, core_b_name, dob, confidence, core_b_ssn_missing, phone_match, postal_code_match, name_similarity,
@@ -17,7 +18,7 @@ export function Decisions({ report }: { report: MatchReport | null }) {
        FROM review_queue ORDER BY priority LIMIT 1`,
     )
       .then(setExample)
-      .catch(() => setExample(null))
+      .catch((e: unknown) => setExampleError(e instanceof Error ? e.message : String(e)))
   }, [])
   if (!report) return null
   const ex = example?.rows[0]
@@ -73,6 +74,8 @@ export function Decisions({ report }: { report: MatchReport | null }) {
                 )}
               </p>
             </div>
+          ) : exampleError ? (
+            <p className="text-sm text-red-700">The example could not be loaded: {exampleError}</p>
           ) : (
             <p className="text-sm text-slate-500">Loading an example from the review queue…</p>
           )}

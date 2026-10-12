@@ -15,14 +15,30 @@ export function QualityPanel() {
   const bank = useBankMode()
   const { version } = useAsOf()
   const [q, setQ] = useState<Quality | null>(null)
+  const [error, setError] = useState('')
   const [openId, setOpenId] = useState<string | null>(null)
   useEffect(() => {
+    setError('')
     fetch(dataUrl('quality.json', versionDir(version)))
-      .then((r) => (r.ok ? r.json() : null))
+      .then((r) => {
+        if (!r.ok) throw new Error(`quality.json: HTTP ${r.status}`)
+        return r.json() as Promise<Quality>
+      })
       .then(setQ)
-      .catch(() => setQ(null))
+      .catch((e: unknown) => {
+        setQ(null)
+        setError(e instanceof Error ? e.message : String(e))
+      })
   }, [version])
-  if (!q) return null
+  if (!q) {
+    return (
+      <Section id="quality" title={bank ? 'Can these numbers be trusted?' : 'Data-quality checks'}>
+        <p className={`text-sm ${error ? 'text-red-700' : 'text-slate-500'}`}>
+          {error ? `The checks for this build could not be loaded (${error}).` : 'Loading the checks for this build…'}
+        </p>
+      </Section>
+    )
+  }
   const passed = q.checks.filter((c) => c.passed).length
   return (
     <Section

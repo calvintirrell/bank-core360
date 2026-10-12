@@ -10,9 +10,13 @@ export function Term({ k, children }: { k: GlossaryKey; children?: ReactNode }) 
   useEffect(() => {
     if (!open) return
     const close = () => setOpen(false)
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close()
     window.addEventListener('scroll', close, true)
-    document.addEventListener('keydown', (e) => e.key === 'Escape' && close())
-    return () => window.removeEventListener('scroll', close, true)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('scroll', close, true)
+      document.removeEventListener('keydown', onKey)
+    }
   }, [open])
   function show() {
     const r = ref.current!.getBoundingClientRect()
