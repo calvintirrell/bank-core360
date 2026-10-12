@@ -64,6 +64,13 @@ export function Decisions({ report }: { report: MatchReport | null }) {
               </p>
               <p className="text-xs text-slate-500">
                 A reviewer confirms or rejects the pair; the decision feeds the next matching run. The full queue is the "possible duplicates" question above.
+                {report.decisions && report.decisions.total > 0 && (
+                  <>
+                    {' '}
+                    So far {report.decisions.total} decisions are on file: {report.decisions.applied} already applied, {report.decisions.pending} waiting for a later month
+                    {report.decisions.ignored_unknown_id > 0 && `, ${report.decisions.ignored_unknown_id} naming a record that is not in this batch`}.
+                  </>
+                )}
               </p>
             </div>
           ) : (

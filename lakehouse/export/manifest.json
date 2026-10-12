@@ -1,30 +1,32 @@
 {
   "as_of": "2026-10-31",
   "bronze": {
-    "core_a_acctmast": 2425,
+    "core_a_acctmast": 2416,
     "core_a_custmast": 1120,
-    "core_a_txnhist": 24247,
-    "core_b_accounts": 2596,
+    "core_a_txnhist": 24586,
+    "core_b_accounts": 2592,
     "core_b_customers": 1220,
-    "core_b_transactions": 25445
+    "core_b_transactions": 25740
   },
   "changes": {
-    "accounts_went_quiet": 110,
-    "accounts_woke_up": 59,
+    "accounts_went_quiet": 93,
+    "accounts_woke_up": 58,
     "address_changes": 15,
+    "checking_accounts_went_quiet": 12,
+    "checking_accounts_woke_up": 8,
     "customers_after": 2070,
     "customers_before": 2035,
     "customers_merged_by_reviewer": 5,
-    "deposits_after": 118077003.2,
+    "deposits_after": 117965170.62,
     "deposits_before": 116009530.27,
     "from_as_of": "2026-09-30",
-    "new_accounts": 94,
+    "new_accounts": 81,
     "new_customers": 40,
     "pairs_rejected_by_reviewer": 2,
     "review_queue_after": 20,
     "review_queue_before": 27,
     "to_as_of": "2026-10-31",
-    "transactions_in_new_month": 4167
+    "transactions_in_new_month": 4175
   },
   "delta_versions": {
     "gold/account_360": 1,
@@ -53,7 +55,7 @@
         "debits_365d",
         "is_dormant_180d"
       ],
-      "rows": 5021
+      "rows": 5008
     },
     "customer_360": {
       "columns": [
@@ -86,7 +88,9 @@
         "last_activity_ts",
         "txn_count_90d",
         "checking_last_txn_ts",
-        "checking_dormant_180d"
+        "checking_dormant_180d",
+        "checking_all_dormant_180d",
+        "dormant_checking_last_txn_ts"
       ],
       "rows": 2070
     },
@@ -125,11 +129,11 @@
         "memo",
         "direction"
       ],
-      "rows": 49692
+      "rows": 50326
     }
   },
   "generator": {
-    "accounts": 5021,
+    "accounts": 5008,
     "accounts_went_quiet": 12,
     "accounts_woke": 8,
     "address_changes": 15,
@@ -140,19 +144,19 @@
     "decisions_reject": 2,
     "new_customers": 40,
     "overlap": 300,
-    "transactions": 49692,
+    "transactions": 50326,
     "trap_review": 2,
     "traps": 5,
     "unique_people": 2040
   },
   "gold": {
-    "account_360": 5021,
+    "account_360": 5008,
     "customer_360": 2070,
     "review_queue": 20
   },
   "iceberg": {
     "account_360": {
-      "rows": 5021,
+      "rows": 5008,
       "snapshots": 3
     },
     "customer_360": {
@@ -172,27 +176,27 @@
     "recall": 0.9,
     "rejected_by_reviewer": 2,
     "review_queue": 20,
-    "tier_1_deterministic": 198,
-    "tier_2_fuzzy": 67,
+    "tier_1_deterministic": 210,
+    "tier_2_fuzzy": 55,
     "tier_3_confirmed": 5,
     "traps_merged": 0,
     "truth_pairs": 300
   },
   "quality": {
-    "checks": 8,
-    "passed": 8
+    "checks": 10,
+    "passed": 10
   },
   "replay": {
     "questions": 7,
     "regenerated": 0,
-    "with_transcript": 7
+    "with_transcript": 0
   },
   "schema_version": 2,
   "seed": 360,
   "silver": {
-    "accounts": 5021,
+    "accounts": 5008,
     "customers": 2340,
-    "transactions": 49692
+    "transactions": 50326
   },
   "version": 1,
   "versions": [

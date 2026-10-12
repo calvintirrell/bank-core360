@@ -1,6 +1,8 @@
 """Apache Iceberg mirror of the gold layer (5C). Delta remains the system of record; the same
 gold tables are also written as Iceberg through a local SQLite catalog so a warehouse or BI tool
-that speaks Iceberg can read them. Each batch becomes an Iceberg snapshot."""
+that speaks Iceberg can read them. Every write is a snapshot: the first batch appends (1), each
+later batch overwrites, which Iceberg records as a delete plus an append (2 more per batch). The
+SQLite catalog stores absolute paths, so it is rebuilt wherever the pipeline runs."""
 
 from __future__ import annotations
 

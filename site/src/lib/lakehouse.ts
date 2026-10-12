@@ -14,6 +14,9 @@ export type Changes = {
   address_changes: number
   accounts_went_quiet: number
   accounts_woke_up: number
+  /** Checking only; absent on builds before the split (then fall back to the all-product figures). */
+  checking_accounts_went_quiet?: number
+  checking_accounts_woke_up?: number
   new_accounts: number
   transactions_in_new_month: number
   deposits_before: number
@@ -53,6 +56,16 @@ export type MatchReport = {
   recall: number
   traps_merged: number
   by_kind: Record<string, { merged: number; review: number; unmatched: number }>
+  /** Every reviewer decision and what happened to it (ER-08); absent on builds before it was reported. */
+  decisions?: {
+    total: number
+    applied: number
+    pending: number
+    ignored_unknown_id: number
+    confirm_applied: number
+    reject_applied: number
+    rows: { core_a_cif: string; core_b_customer_id: string; decision: 'confirm' | 'reject'; decided_on: string; reviewer: string; status: string; was_candidate: boolean | null }[]
+  }
 }
 
 export type RawSample = { columns: string[]; rows: string[][]; total_rows: number }

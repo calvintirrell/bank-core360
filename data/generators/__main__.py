@@ -102,8 +102,7 @@ def main() -> dict:
 
     # --- Core B customers: overlap renderings, traps, review traps, the rest ----------------
     for i, p in enumerate(overlap):
-        kind = overlap_kind(i)
-        pb, has_ssn = vary_for_core_b(p, kind, rng, fake)
+        pb, has_ssn, kind = vary_for_core_b(p, overlap_kind(i), rng, fake)  # kind = the variation actually applied
         st.b_uuid_of[p.pid] = new_uuid(rng)
         st.b_people.append((pb, has_ssn))
         st.truth.append({"a_cif": st.cif_of[p.pid], "b_customer_id": st.b_uuid_of[p.pid], "kind": kind, "same_person": True})
@@ -135,7 +134,9 @@ def main() -> dict:
     for p in overlap[:120]:
         if not any(a.pid == p.pid and a.core == "A" and a.product == "mortgage" for a in st.accounts):
             st.acct_seq += 1
-            opened = datetime.combine(p.since, datetime.min.time()) + timedelta(days=rng.randint(0, 3000))
+            opened = datetime.combine(p.since, datetime.min.time()) + timedelta(
+                days=rng.randint(0, min(3000, max(0, (AS_OF - p.since).days)))
+            )
             st.accounts.append(
                 Account(
                     "A",
@@ -175,11 +176,11 @@ def main() -> dict:
         if k % 2 == 0:
             st.cif_of[p.pid] = f"{10090000 + k * 7:08d}"
             st.a_people.append(p)
-            add_accounts(st, rng, "A", p, st.cif_of[p.pid], opened_after=AS_OF)
+            add_accounts(st, rng, "A", p, st.cif_of[p.pid], opened_after=p.since)
         else:
             st.b_uuid_of[p.pid] = new_uuid(rng)
             st.b_people.append((p, True))
-            add_accounts(st, rng, "B", p, st.b_uuid_of[p.pid], opened_after=AS_OF)
+            add_accounts(st, rng, "B", p, st.b_uuid_of[p.pid], opened_after=p.since)
     # Address changes for 15 Core B-only customers.
     moved = 0
     for idx, (p, has_ssn) in enumerate(st.b_people):
@@ -287,15 +288,30 @@ def gen_transactions(st: State, rng, window_start, window_end, n: int, october: 
     picks = rng.choices(range(len(accts)), weights=weights, k=max(0, n - (0 if october else len(accts))))
     if not october:
         picks += list(range(len(accts)))  # every account gets at least one transaction in batch 1
+    else:
+        picks += [i for i, a in enumerate(accts) if a.woke]  # a designed wake-up is not left to chance
+
+    def window(a: Account) -> tuple[datetime, datetime] | None:
+        """When this account may transact in this run: never before it opened; a designed-dormant
+        account only before the quiet window. None if that leaves no time at all."""
+        end = AS_OF - timedelta(days=181) if (not october and a.dormant) else window_end
+        start_dt = max(datetime.combine(window_start, datetime.min.time()), a.opened)
+        end_dt = datetime.combine(end, datetime.min.time())
+        if start_dt >= end_dt:
+            if not october and a.dormant:
+                return None  # opened inside the quiet window: no batch-1 activity at all, still dormant
+            end_dt = start_dt + timedelta(seconds=1)
+        return start_dt, end_dt
+
+    active = [i for i, a in enumerate(accts) if window(a) is not None]
     for idx in picks:
         a = accts[idx]
-        end = window_end
-        if not october and a.dormant:
-            end = AS_OF - timedelta(days=181)
-        start_dt = datetime.combine(window_start, datetime.min.time())
-        ts = start_dt + timedelta(
-            seconds=rng.randint(0, max(1, int((datetime.combine(end, datetime.min.time()) - start_dt).total_seconds())))
-        )
+        w = window(a)
+        while w is None:  # keep the designed transaction count: hand the pick to an account that can transact
+            a = accts[rng.choice(active)]
+            w = window(a)
+        start_dt, end_dt = w
+        ts = start_dt + timedelta(seconds=rng.randint(0, int((end_dt - start_dt).total_seconds())))
         if a.product == "mortgage":
             amount, credit, memo = round(rng.uniform(800, 3500), 2), False, "MORTGAGE PAYMENT"
         elif a.product == "cd":

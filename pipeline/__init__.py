@@ -8,17 +8,23 @@ Stages (each writes Delta tables under lakehouse/, rebuilt from scratch every ru
   export  gold + silver transactions as plain Parquet for the browser, plus lineage + reports
 """
 
+import os
 from datetime import date
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-LAKEHOUSE = ROOT / "lakehouse"
+# Every generated artefact (raw feeds, lakehouse, truth, decisions) lives under DATA_ROOT. It is the
+# repo by default; tests and scratch runs point BANK_CORE_DATA_ROOT at a temp dir so the tracked
+# lakehouse is never rewritten by a test run.
+DATA_ROOT = Path(os.environ.get("BANK_CORE_DATA_ROOT") or ROOT)
+LAKEHOUSE = DATA_ROOT / "lakehouse"
 RAW = LAKEHOUSE / "raw"
 BRONZE = LAKEHOUSE / "bronze"
 SILVER = LAKEHOUSE / "silver"
 GOLD = LAKEHOUSE / "gold"
 EXPORT = LAKEHOUSE / "export"
-TRUTH = ROOT / "data" / "truth"
+TRUTH = DATA_ROOT / "data" / "truth"
+DECISIONS = DATA_ROOT / "data" / "decisions"
 
 SEED = 360
 DORMANT_DAYS = 180

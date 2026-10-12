@@ -2,7 +2,11 @@
 
 Survivorship (G-01): contact fields prefer Core B (newer system) when a customer exists in both;
 customer_since is the earliest across cores; is_active is true if active in any core.
-Dormancy (G-10): an open checking account with no transactions in the DORMANT_DAYS before AS_OF.
+Dormancy (G-10): an open account with no transactions in the DORMANT_DAYS before AS_OF.
+Customer level: checking_dormant_180d = ANY open checking account dormant (G-11);
+checking_all_dormant_180d = EVERY open checking account dormant (G-12);
+dormant_checking_last_txn_ts = last activity on the quiet checking account(s) themselves (G-13), so
+the flag and the date shown next to it never contradict each other.
 """
 
 from __future__ import annotations
@@ -109,7 +113,12 @@ def customer_360(cust: pl.DataFrame, xref: pl.DataFrame, acct360: pl.DataFrame) 
         pl.col("last_txn_ts").max().alias("last_activity_ts"),
         pl.col("txn_count_90d").sum().alias("txn_count_90d"),
         pl.col("is_dormant_180d").filter(pl.col("product_type") == "checking").any().alias("checking_dormant_180d"),  # G-11
+        pl.col("is_dormant_180d").filter(pl.col("product_type") == "checking").all().alias("_all_checking_dormant"),
         pl.col("last_txn_ts").filter(pl.col("product_type") == "checking").max().alias("checking_last_txn_ts"),
+        pl.col("last_txn_ts")
+        .filter((pl.col("product_type") == "checking") & pl.col("is_dormant_180d"))
+        .max()
+        .alias("dormant_checking_last_txn_ts"),  # G-13
     )
     df = base.join(agg, on="customer_key", how="left").with_columns(
         pl.col("open_accounts").fill_null(0),
@@ -121,6 +130,9 @@ def customer_360(cust: pl.DataFrame, xref: pl.DataFrame, acct360: pl.DataFrame) 
         pl.col("loan_balance").fill_null(0.0),
         pl.col("txn_count_90d").fill_null(0),
         pl.col("checking_dormant_180d").fill_null(False),
+        (pl.col("has_checking").fill_null(False) & pl.col("_all_checking_dormant").fill_null(False)).alias(
+            "checking_all_dormant_180d"
+        ),  # G-12
     )
     return df.select(
         "customer_key",
@@ -153,6 +165,8 @@ def customer_360(cust: pl.DataFrame, xref: pl.DataFrame, acct360: pl.DataFrame) 
         "txn_count_90d",
         "checking_last_txn_ts",
         "checking_dormant_180d",
+        "checking_all_dormant_180d",
+        "dormant_checking_last_txn_ts",
     ).sort("customer_key")
 
 

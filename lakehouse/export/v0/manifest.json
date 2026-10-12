@@ -3,10 +3,10 @@
   "bronze": {
     "core_a_acctmast": 2376,
     "core_a_custmast": 1100,
-    "core_a_txnhist": 24371,
+    "core_a_txnhist": 24308,
     "core_b_accounts": 2551,
     "core_b_customers": 1200,
-    "core_b_transactions": 25629
+    "core_b_transactions": 25692
   },
   "delta_versions": {
     "gold/account_360": 0,
@@ -68,7 +68,9 @@
         "last_activity_ts",
         "txn_count_90d",
         "checking_last_txn_ts",
-        "checking_dormant_180d"
+        "checking_dormant_180d",
+        "checking_all_dormant_180d",
+        "dormant_checking_last_txn_ts"
       ],
       "rows": 2035
     },
@@ -148,15 +150,15 @@
     "recall": 0.8833,
     "rejected_by_reviewer": 0,
     "review_queue": 27,
-    "tier_1_deterministic": 198,
-    "tier_2_fuzzy": 67,
+    "tier_1_deterministic": 210,
+    "tier_2_fuzzy": 55,
     "tier_3_confirmed": 0,
     "traps_merged": 0,
     "truth_pairs": 300
   },
   "quality": {
-    "checks": 8,
-    "passed": 8
+    "checks": 10,
+    "passed": 10
   },
   "schema_version": 2,
   "seed": 360,

@@ -16,7 +16,7 @@
     "S-01": "Core A CUST_NAME 'LAST, FIRST M' split into last / first / middle initial",
     "S-02": "Core A dates YYYYMMDD parsed to ISO date",
     "S-03": "Core B ISO-8601 dates / timestamps parsed; timestamps truncated to date where noted",
-    "S-04": "Phone reduced to 10 digits (Core A already digits; Core B '(xxx) xxx-xxxx' stripped)",
+    "S-04": "Phone reduced to its digits (every non-digit stripped: Core A is already digits, Core B is '(xxx) xxx-xxxx')",
     "S-05": "Core A CUST_STAT 'A' -> is_active true, else false",
     "S-06": "Core B nested address object flattened",
     "S-07": "Nickname canonicalization for matching only (Bill->William, Liz->Elizabeth, ...)",
@@ -25,7 +25,7 @@
     "S-11": "Core A CUR_BAL_CENTS integer cents / 100 -> dollars",
     "S-12": "Open flag: A ACCT_STAT 'O', B status 'open'",
     "S-13": "Product category: checking/savings/cd -> deposit, mortgage -> loan",
-    "S-20": "Transaction time: A MM/DD/YYYY (date only, midnight), B ISO timestamp",
+    "S-20": "Transaction time: A MM/DD/YYYY (date only, stored as midnight), B ISO timestamp with a trailing Z (UTC, stored without a zone); both naive, so same-day comparisons across cores are exact only at date grain",
     "S-21": "Core A AMT + DR_CR -> signed amount (credit positive, debit negative); B already signed",
     "S-22": "Core A DESC upper-case memo title-cased",
     "S-23": "direction = credit if amount >= 0 else debit",
@@ -35,8 +35,8 @@
     "ER-04": "Tier 2 fuzzy: 0.40*name similarity (token-set ratio) + 0.30*ssn (1 equal / 0.5 missing) + 0.15*phone + 0.15*postal code; auto-merge >= 0.80",
     "ER-05": "Review queue: 0.55 <= confidence < 0.80, not merged",
     "ER-06": "Greedy one-to-one assignment by descending confidence",
-    "ER-07": "customer_key surrogate: C + 7 digits hashed from the source id, stable across batches; a merged pair takes the Core A key",
-    "ER-08": "Reviewer decisions: a confirmed pair merges as tier 3 (confidence 1.0); a rejected pair never merges; only decisions dated on or before the batch as-of apply",
+    "ER-07": "customer_key surrogate: C + 7 digits hashed from the source id, stable across batches; a merged pair takes the Core A key; a hash collision stops the pipeline (Q-04 re-checks on the export)",
+    "ER-08": "Reviewer decisions: a confirmed pair merges as tier 3 (confidence 1.0) even if the rules never scored it; a rejected pair never merges; decisions dated after the batch as-of are pending; every decision's status (applied / pending / ignored unknown id) is in the match report",
     "G-01": "Survivorship: contact/name fields prefer Core B (newer system) when present in both",
     "G-02": "customer_since = earliest relationship date across cores",
     "G-03": "is_active = active in any core",
@@ -45,6 +45,8 @@
     "G-06": "loan_balance = sum of open loan-category balances",
     "G-10": "is_dormant_180d = open account with zero transactions in the 180 days before the as-of date",
     "G-11": "checking_dormant_180d = any open checking account dormant per G-10",
+    "G-12": "checking_all_dormant_180d = every open checking account dormant per G-10 (false without a checking account)",
+    "G-13": "dormant_checking_last_txn_ts = latest transaction on the open checking accounts that are dormant; null when none is",
     "G-20": "review_queue = candidate pairs scored 0.55-0.80 (ER-05), not merged; each side remains its own customer_360 row; priority = rank by combined balance"
   },
   "tables": {
@@ -373,10 +375,11 @@
               "field": "first_name,last_name,date_of_birth,ssn_last_four,phone,address.postal_code"
             }
           ],
-          "transform": "1 deterministic / 2 fuzzy / null single-core",
+          "transform": "1 deterministic / 2 fuzzy / 3 confirmed by a reviewer / null single-core",
           "rules": [
             "ER-03",
-            "ER-04"
+            "ER-04",
+            "ER-08"
           ],
           "plain": "How the two banks' records were linked: 1 means an exact match on name and SSN digits, 2 means a close match scored by similarity, 3 means a person reviewed the pair and confirmed it."
         },
@@ -393,10 +396,11 @@
               "field": "first_name,last_name,date_of_birth,ssn_last_four,phone,address.postal_code"
             }
           ],
-          "transform": "0-1 score; 1.00 for tier 1",
+          "transform": "0-1 score; 1.00 for tier 1 and for a reviewer-confirmed pair",
           "rules": [
             "ER-03",
-            "ER-04"
+            "ER-04",
+            "ER-08"
           ],
           "plain": "How sure the matching was, from 0 to 1. Exact matches score 1."
         },
@@ -618,6 +622,48 @@
             "G-11"
           ],
           "plain": "True if at least one open checking account has had no transactions for 180 days."
+        },
+        "checking_all_dormant_180d": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "TXNHIST.psv",
+              "field": "TXN_DT"
+            },
+            {
+              "system": "core_b",
+              "table": "transactions.jsonl",
+              "field": "posted_at"
+            }
+          ],
+          "transform": "every open checking account with no activity in 180 days",
+          "rules": [
+            "S-20",
+            "G-10",
+            "G-12"
+          ],
+          "plain": "True if every open checking account has had no transactions for 180 days."
+        },
+        "dormant_checking_last_txn_ts": {
+          "sources": [
+            {
+              "system": "core_a",
+              "table": "TXNHIST.psv",
+              "field": "TXN_DT"
+            },
+            {
+              "system": "core_b",
+              "table": "transactions.jsonl",
+              "field": "posted_at"
+            }
+          ],
+          "transform": "max transaction time on the open checking accounts that are dormant",
+          "rules": [
+            "S-20",
+            "G-10",
+            "G-13"
+          ],
+          "plain": "When the quiet checking account was last used; empty if no checking account is quiet."
         }
       }
     },

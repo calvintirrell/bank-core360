@@ -2,8 +2,11 @@
 the model's own transcript, so the demo works for visitors with no key and after the daily cap.
 
 Without ANTHROPIC_API_KEY the cache still ships hand-authored SQL + real results, explanation
-left null and flagged as pending. With a key, questions whose transcript is missing or whose
-question/SQL changed are regenerated; unchanged ones are reused so CI commits stay quiet."""
+left null and flagged as pending. With a key, a transcript is regenerated when anything it could
+have talked about changed: the question, the SQL, the prompt, the model, or the result rows
+themselves (so a regenerated dataset never ships an explanation quoting stale numbers). A transcript
+that ended without an explanation is never reused. Unchanged questions keep their transcript so CI
+commits stay quiet."""
 
 from __future__ import annotations
 
@@ -31,7 +34,7 @@ QUESTIONS: list[dict] = [
             "Who should a branch manager call first?",
         ],
         "question": "Which mortgage customers have a checking account that has gone quiet for six months?",
-        "sql": """SELECT customer_key, full_name, source_systems, loan_balance, checking_last_txn_ts
+        "sql": """SELECT customer_key, full_name, source_systems, loan_balance, dormant_checking_last_txn_ts
 FROM customer_360
 WHERE has_mortgage AND checking_dormant_180d
 ORDER BY loan_balance DESC
@@ -153,8 +156,15 @@ def run_query(con: duckdb.DuckDBPyConnection, sql: str, max_rows: int) -> dict:
     }
 
 
-def _fingerprint(q: dict[str, str]) -> str:
-    return hashlib.sha256((q["question"] + "\n" + q["sql"] + "\n" + build_prompt()).encode()).hexdigest()[:16]
+def _fingerprint(q: dict[str, str], result: dict, model: str = MODEL) -> str:
+    """Everything the transcript depends on: question, SQL, system prompt, model and the result rows."""
+    rows = json.dumps(result, sort_keys=True, default=str)
+    return hashlib.sha256("\n".join([q["question"], q["sql"], build_prompt(), model, rows]).encode()).hexdigest()[:16]
+
+
+def reusable(prev: dict | None, fp: str) -> bool:
+    """A previous entry is reused only if nothing changed AND it actually contains an explanation."""
+    return bool(prev and prev.get("fingerprint") == fp and prev.get("agent") and prev["agent"].get("explanation"))
 
 
 def _agent_transcript(con: duckdb.DuckDBPyConnection, question: str, api_key: str) -> dict:
@@ -234,18 +244,19 @@ def write() -> dict:
     out = []
     regenerated = 0
     for q in QUESTIONS:
-        fp = _fingerprint(q)
+        result = run_query(con, q["sql"], MAX_ROWS)
+        fp = _fingerprint(q, result)
         entry = {
             "id": q["id"],
             "question": q["question"],
             "fingerprint": fp,
             "sql": q["sql"],
             "follow_ups": q.get("follow_ups", []),
-            "result": run_query(con, q["sql"], MAX_ROWS),
+            "result": result,
             "agent": None,
         }
         prev = existing.get(q["id"])
-        if prev and prev.get("fingerprint") == fp and prev.get("agent"):
+        if reusable(prev, fp):
             entry["agent"] = prev["agent"]
         elif api_key:
             entry["agent"] = _agent_transcript(con, q["question"], api_key)

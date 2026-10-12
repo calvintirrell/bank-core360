@@ -22,8 +22,11 @@ const FILTERS: Array<{ label: string; bankLabel: string; where: string }> = [
 const COLUMNS = [
   'customer_key', 'full_name', 'source_systems', 'match_tier', 'match_confidence', 'open_accounts',
   'has_checking', 'has_savings', 'has_mortgage', 'has_cd', 'deposit_balance', 'loan_balance',
-  'checking_dormant_180d', 'customer_since', 'state', 'city', 'checking_last_txn_ts',
+  'checking_dormant_180d', 'customer_since', 'state', 'city', 'checking_last_txn_ts', 'dormant_checking_last_txn_ts',
 ] as const
+
+/** Selected for the people cards, not shown as table columns. */
+const CARD_ONLY = ['city', 'checking_last_txn_ts', 'dormant_checking_last_txn_ts']
 
 const SYSTEM_BADGE: Record<string, string> = {
   core_a: 'bg-amber-100 text-amber-900',
@@ -121,7 +124,7 @@ export function Customer360({ lineage }: { lineage: Lineage | null }) {
           <table className="min-w-full text-sm">
             <thead className="bg-slate-50">
               <tr className="text-left text-xs uppercase tracking-wide text-slate-600">
-                {result.columns.filter((c) => !['city', 'checking_last_txn_ts'].includes(c.name)).map((c) => (
+                {result.columns.filter((c) => !CARD_ONLY.includes(c.name)).map((c) => (
                   <th key={c.name} className="whitespace-nowrap px-3 py-2 font-medium">
                     {c.name.replace(/_/g, ' ')}
                     <LineageBadge column={c.name} lineage={lineage} table="customer_360" />
@@ -139,7 +142,7 @@ export function Customer360({ lineage }: { lineage: Lineage | null }) {
                     onClick={() => setSelected(isSel ? null : key)}
                     className={`cursor-pointer border-t border-slate-100 ${isSel ? 'bg-violet-50' : 'hover:bg-slate-50'}`}
                   >
-                    {result.columns.filter((c) => !['city', 'checking_last_txn_ts'].includes(c.name)).map((c) => {
+                    {result.columns.filter((c) => !CARD_ONLY.includes(c.name)).map((c) => {
                       const v = row[c.name]
                       let cell: React.ReactNode = formatCell(v, c.kind)
                       if (c.name === 'source_systems') {

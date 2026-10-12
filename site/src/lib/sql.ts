@@ -28,7 +28,7 @@ export const EXAMPLES: Example[] = [
   {
     label: 'Mortgage + dormant checking',
     sql: `SELECT customer_key, full_name, source_systems, match_confidence,
-       loan_balance, checking_last_txn_ts
+       loan_balance, dormant_checking_last_txn_ts
 FROM customer_360
 WHERE has_mortgage AND checking_dormant_180d
 ORDER BY loan_balance DESC

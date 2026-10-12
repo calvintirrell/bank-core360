@@ -60,8 +60,86 @@
   },
   "candidates_scored": 290,
   "confirmed_by_reviewer": 5,
+  "decisions": {
+    "applied": 7,
+    "confirm_applied": 5,
+    "ignored_unknown_id": 0,
+    "pending": 0,
+    "reject_applied": 2,
+    "rows": [
+      {
+        "core_a_cif": "10002486",
+        "core_b_customer_id": "92dd7a3c-fe10-40a3-b275-fb3e18910fc0",
+        "decided_on": "2026-10-10",
+        "decision": "confirm",
+        "reviewer": "ops-reviewer-1",
+        "status": "applied",
+        "was_candidate": true
+      },
+      {
+        "core_a_cif": "10002073",
+        "core_b_customer_id": "a79448bf-6ffe-4b73-8f1b-6005fb596732",
+        "decided_on": "2026-10-10",
+        "decision": "confirm",
+        "reviewer": "ops-reviewer-1",
+        "status": "applied",
+        "was_candidate": true
+      },
+      {
+        "core_a_cif": "10004969",
+        "core_b_customer_id": "3d5aee63-8e21-4789-8f13-3ea43ba3d2d6",
+        "decided_on": "2026-10-10",
+        "decision": "confirm",
+        "reviewer": "ops-reviewer-1",
+        "status": "applied",
+        "was_candidate": true
+      },
+      {
+        "core_a_cif": "10005027",
+        "core_b_customer_id": "aaaa6190-eeab-4268-afbd-b02ddbaa3c4c",
+        "decided_on": "2026-10-10",
+        "decision": "confirm",
+        "reviewer": "ops-reviewer-1",
+        "status": "applied",
+        "was_candidate": true
+      },
+      {
+        "core_a_cif": "10001391",
+        "core_b_customer_id": "a24780e7-83df-4ee8-be48-2bca1142db3e",
+        "decided_on": "2026-10-10",
+        "decision": "confirm",
+        "reviewer": "ops-reviewer-1",
+        "status": "applied",
+        "was_candidate": true
+      },
+      {
+        "core_a_cif": "10001064",
+        "core_b_customer_id": "68edc466-2a76-4ec4-b345-44294900fef6",
+        "decided_on": "2026-10-12",
+        "decision": "reject",
+        "reviewer": "ops-reviewer-1",
+        "status": "applied",
+        "was_candidate": true
+      },
+      {
+        "core_a_cif": "10005624",
+        "core_b_customer_id": "c6b8b030-a887-4f74-a76e-77dc02d47ce6",
+        "decided_on": "2026-10-12",
+        "decision": "reject",
+        "reviewer": "ops-reviewer-1",
+        "status": "applied",
+        "was_candidate": true
+      }
+    ],
+    "total": 7
+  },
   "false_negatives": 30,
   "false_positives": 0,
+  "keys": {
+    "collisions": 0,
+    "format": "C + 7 digits (sha1 of system:id)",
+    "issued": 2070
+  },
   "precision": 1.0,
   "recall": 0.9,
   "rejected_by_reviewer": 2,
@@ -70,8 +148,8 @@
     "auto_merge": 0.8,
     "review_floor": 0.55
   },
-  "tier_1_deterministic": 198,
-  "tier_2_fuzzy": 67,
+  "tier_1_deterministic": 210,
+  "tier_2_fuzzy": 55,
   "tier_3_confirmed": 5,
   "traps_merged": 0,
   "true_positives": 270,

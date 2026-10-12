@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import random
 import uuid
 from dataclasses import dataclass, replace
@@ -12,8 +13,9 @@ SEED = 360
 AS_OF = date(2026, 9, 30)  # batch 1
 AS_OF_2 = date(2026, 10, 31)  # batch 2 (one month later)
 ROOT = Path(__file__).resolve().parents[2]
-RAW = ROOT / "lakehouse" / "raw"
-TRUTH = ROOT / "data" / "truth"
+DATA_ROOT = Path(os.environ.get("BANK_CORE_DATA_ROOT") or ROOT)  # see pipeline/__init__.py
+RAW = DATA_ROOT / "lakehouse" / "raw"
+TRUTH = DATA_ROOT / "data" / "truth"
 
 N_UNIQUE = 2000
 N_OVERLAP = 300  # 15% of unique people exist in both cores
@@ -123,6 +125,11 @@ def build_people(rng: random.Random, fake: Faker) -> tuple[list[Person], list[st
     first_names = first_name_pool(fake)
     seen_ssn: set[str] = set()
     people = [make_person(pid, rng, fake, first_names, seen_ssn) for pid in range(N_UNIQUE)]
+    # An overlap person designed as a "nickname" case must have a first name that has a nickname,
+    # otherwise the label would promise a variation the data does not contain.
+    for i in range(N_OVERLAP):
+        if overlap_kind(i) == "nickname" and people[i].first not in NICKNAMES:
+            people[i] = replace(people[i], first=rng.choice(sorted(NICKNAMES)))
     return people, first_names, seen_ssn
 
 
@@ -135,31 +142,31 @@ def overlap_kind(i: int) -> str:
     raise IndexError(i)
 
 
-def vary_for_core_b(p: Person, kind: str, rng: random.Random, fake: Faker) -> tuple[Person, bool]:
-    """Returns the Core B rendering of an overlapping person and whether B has the SSN last 4."""
+def vary_for_core_b(p: Person, kind: str, rng: random.Random, fake: Faker) -> tuple[Person, bool, str]:
+    """Returns the Core B rendering of an overlapping person, whether B has the SSN last 4, and the
+    variation actually applied (recorded as the truth label, so the by-kind scorecard is honest)."""
     if kind == "clean":
-        return p, True
+        return p, True, kind
     if kind == "nickname":
         nick = NICKNAMES.get(p.first)
         if nick:
-            return replace(p, first=nick), True
-        kind = "typo"
+            return replace(p, first=nick), True, kind
+        kind = "typo"  # cannot happen after build_people's fix-up, kept as the honest fallback
     if kind == "typo":
         last = list(p.last)
-        if len(last) > 3:
-            i = rng.randint(1, len(last) - 2)
-            last[i] = rng.choice("aeiou")
-        return replace(p, last="".join(last)), True
+        i = rng.randint(1, len(last) - 2) if len(last) > 3 else rng.randint(0, len(last) - 1)
+        last[i] = rng.choice([v for v in "aeiou" if v != last[i].lower()])  # always a real change
+        return replace(p, last="".join(last)), True, kind
     if kind == "middle_hyphen":
-        return replace(p, middle="", last=f"{p.last}-{fake.last_name()}"), True
+        return replace(p, middle="", last=f"{p.last}-{fake.last_name()}"), True, kind
     if kind == "ssn_missing":
-        return p, False
+        return p, False, kind
     if kind == "lastname_changed":
-        return replace(p, last=fake.last_name()), True
+        return replace(p, last=fake.last_name()), True, kind
     if kind == "lastname_changed_ssn_missing":
-        return replace(p, last=fake.last_name()), False
+        return replace(p, last=fake.last_name()), False, kind
     if kind == "ssn_missing_moved":
-        return replace(p, street=fake.street_address(), city=fake.city(), zip=f"{rng.randint(10000, 99999)}"), False
+        return replace(p, street=fake.street_address(), city=fake.city(), zip=f"{rng.randint(10000, 99999)}"), False, kind
     if kind == "lastname_changed_ssn_missing_moved_newphone":
         return (
             replace(
@@ -171,6 +178,7 @@ def vary_for_core_b(p: Person, kind: str, rng: random.Random, fake: Faker) -> tu
                 phone=f"{rng.randint(200, 989)}{rng.randint(200, 999)}{rng.randint(0, 9999):04d}",
             ),
             False,
+            kind,
         )
     raise ValueError(kind)
 

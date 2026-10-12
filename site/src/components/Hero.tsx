@@ -81,7 +81,11 @@ export function Hero({ manifest, report, changes, latest }: { manifest: Manifest
             <li><b>{changes.new_customers}</b> new customers joined, bringing {changes.new_accounts} new accounts.</li>
             <li><b>{changes.customers_merged_by_reviewer}</b> possible duplicates were confirmed by a reviewer and merged; <b>{changes.pairs_rejected_by_reviewer}</b> were rejected as different people.</li>
             <li>The review queue went from {changes.review_queue_before} to <b>{changes.review_queue_after}</b>.</li>
-            <li><b>{changes.accounts_went_quiet}</b> accounts went quiet and <b>{changes.accounts_woke_up}</b> woke up.</li>
+            <li>
+              <b>{changes.checking_accounts_went_quiet ?? changes.accounts_went_quiet}</b> checking accounts went quiet and{' '}
+              <b>{changes.checking_accounts_woke_up ?? changes.accounts_woke_up}</b> woke up
+              {changes.checking_accounts_went_quiet != null && ` (${changes.accounts_went_quiet} and ${changes.accounts_woke_up} across every product)`}.
+            </li>
             <li><b>{changes.address_changes}</b> customers changed address.</li>
             <li>{changes.transactions_in_new_month.toLocaleString()} transactions in the new month; deposits {money(changes.deposits_before)} → <b>{money(changes.deposits_after)}</b>.</li>
           </ul>

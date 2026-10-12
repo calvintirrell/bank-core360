@@ -28,6 +28,13 @@ export function MatchReport({ report }: { report: Report | null }) {
         <Stat label="Traps merged" value={String(report.traps_merged)} hint="same name + DOB, different person" />
         <Stat label="Candidates scored" value={report.candidates_scored.toLocaleString()} hint="after blocking on DOB" />
       </div>
+      {report.decisions && (
+        <p className="mb-4 text-xs text-slate-600">
+          Reviewer decisions (ER-08): {report.decisions.total} on file, {report.decisions.applied} applied this batch ({report.decisions.confirm_applied} confirm,{' '}
+          {report.decisions.reject_applied} reject), {report.decisions.pending} dated after this batch, {report.decisions.ignored_unknown_id} naming an unknown id.
+          {report.decisions.rows.some((r) => r.status === 'applied' && r.was_candidate === false) && ' At least one confirmed pair was one the rules alone could not see.'}
+        </p>
+      )}
       <div className="grid gap-4 md:grid-cols-5">
         <Card title="Outcome by designed difficulty" className="md:col-span-3">
           <div className="overflow-x-auto">

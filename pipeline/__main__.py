@@ -86,23 +86,30 @@ def changes(prev_dir, cur_dir) -> dict:
         c1.select("customer_key", "postal_code", "city"), on="customer_key", suffix="_new"
     )
     acct_key = ["source_system", "source_account_id"]
-    d0 = a0.filter(pl.col("is_open")).select(acct_key + ["is_dormant_180d"])
+    d0 = a0.filter(pl.col("is_open")).select(acct_key + ["is_dormant_180d", "product_type"])
     d1 = a1.filter(pl.col("is_open")).select(acct_key + ["is_dormant_180d"])
     j = d0.join(d1, on=acct_key, suffix="_new")
+    went_quiet = j.filter(~pl.col("is_dormant_180d") & pl.col("is_dormant_180d_new"))
+    woke_up = j.filter(pl.col("is_dormant_180d") & ~pl.col("is_dormant_180d_new"))
+    # reviewer decisions applied in THIS batch (dated after the previous as-of), not cumulative
+    rows = m1.get("decisions", {}).get("rows", [])
+    this_batch = [r for r in rows if r["status"] == "applied" and r["decided_on"] > m0["as_of"]]
     return {
         "from_as_of": m0["as_of"],
         "to_as_of": m1["as_of"],
         "customers_before": c0.height,
         "customers_after": c1.height,
         "new_customers": len(keys1 - keys0),
-        "customers_merged_by_reviewer": m1.get("confirmed_by_reviewer", 0),
-        "pairs_rejected_by_reviewer": m1.get("rejected_by_reviewer", 0),
+        "customers_merged_by_reviewer": sum(1 for r in this_batch if r["decision"] == "confirm"),
+        "pairs_rejected_by_reviewer": sum(1 for r in this_batch if r["decision"] == "reject"),
         "review_queue_before": m0["review_queue"],
         "review_queue_after": m1["review_queue"],
         "address_changes": both.filter(pl.col("postal_code") != pl.col("postal_code_new")).height,
-        "accounts_went_quiet": j.filter(~pl.col("is_dormant_180d") & pl.col("is_dormant_180d_new")).height,
-        "accounts_woke_up": j.filter(pl.col("is_dormant_180d") & ~pl.col("is_dormant_180d_new")).height,
-        "new_accounts": a1.height - a0.height,
+        "accounts_went_quiet": went_quiet.height,  # all products, open in both months
+        "accounts_woke_up": woke_up.height,
+        "checking_accounts_went_quiet": went_quiet.filter(pl.col("product_type") == "checking").height,
+        "checking_accounts_woke_up": woke_up.filter(pl.col("product_type") == "checking").height,
+        "new_accounts": a1.join(a0.select(acct_key), on=acct_key, how="anti").height,  # opened since, not a net figure
         "transactions_in_new_month": t1.filter(pl.col("txn_ts") > pl.lit(m0["as_of"]).str.to_datetime("%Y-%m-%d")).height,
         "deposits_before": round(c0["deposit_balance"].sum(), 2),
         "deposits_after": round(c1["deposit_balance"].sum(), 2),
@@ -120,7 +127,7 @@ def main() -> int:
         fresh = i == 0
         b = bronze.run(fresh)
         s = silver.run(fresh)
-        m = match.run()
+        m = match.run(fresh)
         g = gold.run(fresh)
         ice = iceberg.run(fresh)
         lineage.write()
@@ -132,7 +139,7 @@ def main() -> int:
             "seed": SEED,
             "as_of": as_of.isoformat(),
             "version": i,
-            "is_latest": not fresh,
+            "is_latest": i == len(BATCHES) - 1,
             "versions": [{"as_of": d.isoformat(), "dir": "" if j == len(BATCHES) - 1 else f"v{j}"} for j, d in enumerate(BATCHES)],
             "delta_versions": {f"gold/{t}": table_version(GOLD, t) for t in ("customer_360", "account_360", "review_queue")},
             "iceberg": {t: {"snapshots": v["snapshots"], "rows": v["rows"]} for t, v in ice.items()},
@@ -170,8 +177,7 @@ def main() -> int:
         (version_dir() / "manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
         versions.append(manifest)
         print(f"[{as_of}] {json.dumps(manifest['match'])}")
-    (EXPORT / "spike.parquet").unlink(missing_ok=True)
-    print(json.dumps(versions[-1]["changes"]), f"| {time.perf_counter() - t0:.1f}s")
+    print(json.dumps(versions[-1].get("changes", {"batches": len(BATCHES)})), f"| {time.perf_counter() - t0:.1f}s")
     return 0
 
 

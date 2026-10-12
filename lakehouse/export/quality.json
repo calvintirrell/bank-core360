@@ -8,8 +8,8 @@
    "plain": "Every balance on this page, added together, equals the two banks' files to the cent.",
    "sql": "SELECT round((SELECT sum(CAST(CUR_BAL_CENTS AS BIGINT)) / 100.0 FROM raw_a_accounts) + (SELECT sum(balance) FROM raw_b_accounts), 2) AS raw_total,\n                    round((SELECT sum(balance) FROM account_360), 2) AS gold_total",
    "value": {
-    "raw_total": 442598890.61,
-    "gold_total": 442598890.61,
+    "raw_total": 438077776.02,
+    "gold_total": 438077776.02,
     "difference": 0.0
    },
    "expected": "difference < 0.01",
@@ -39,12 +39,12 @@
   {
    "id": "Q-04",
    "title": "Nobody is listed twice",
-   "plain": "Each person has exactly one entry, and no bank record was used for two people.",
-   "sql": "SELECT (SELECT count(*) - count(DISTINCT customer_key) FROM customer_360)\n                  + (SELECT count(core_a_cif) - count(DISTINCT core_a_cif) FROM customer_360)\n                  + (SELECT count(core_b_customer_id) - count(DISTINCT core_b_customer_id) FROM customer_360)",
+   "plain": "Each bank record was used once, and a customer key is shared only by the two records of one matched person.",
+   "sql": "SELECT (SELECT count(*) - count(DISTINCT source_system || ':' || source_customer_id) FROM customer_xref)\n                  + (SELECT count(*) FROM (\n                        SELECT customer_key, count(*) AS records, count(matched_with) AS matched, count(DISTINCT source_system) AS systems\n                        FROM customer_xref GROUP BY 1)\n                     WHERE records > 1 AND NOT (records = 2 AND matched = 2 AND systems = 2))\n                  + (SELECT count(*) - count(DISTINCT customer_key) FROM customer_360)",
    "value": 0,
    "expected": 0,
    "passed": true,
-   "detail": ""
+   "detail": "Counts source records used twice, keys held by records that are not one matched Core A + Core B pair, and duplicate customer_360 keys"
   },
   {
    "id": "Q-05",
@@ -52,7 +52,7 @@
    "plain": "Every column on this page names the bank system it came from, the field, and the rule applied, in plain words.",
    "sql": null,
    "value": {
-    "columns": 75,
+    "columns": 77,
     "missing": []
    },
    "expected": "0 missing",
@@ -86,12 +86,32 @@
   {
    "id": "Q-08",
    "title": "'Quiet' means what it says",
-   "plain": "An account is flagged quiet exactly when it is open and had no transactions in the 180 days before the as-of date, never otherwise.",
-   "sql": "SELECT count(*) FROM account_360 WHERE is_dormant_180d != (is_open AND txn_count_180d = 0)",
+   "plain": "An account is flagged quiet exactly when it is open and the transaction list shows nothing in the 180 days before the as-of date, never otherwise.",
+   "sql": "SELECT count(*) FROM account_360 a\n             LEFT JOIN (SELECT source_system, source_account_id, max(txn_ts) AS last_ts FROM transactions GROUP BY 1, 2) t\n                    USING (source_system, source_account_id)\n             WHERE a.is_dormant_180d != (a.is_open AND (t.last_ts IS NULL OR t.last_ts < TIMESTAMP '2026-10-31 23:59:59.999999' - INTERVAL 180 DAY))",
    "value": 0,
    "expected": 0,
    "passed": true,
-   "detail": ""
+   "detail": "Recomputed from max(txn_ts) per account in the exported transactions, independently of account_360.txn_count_180d"
+  },
+  {
+   "id": "Q-09",
+   "title": "People keep the same key from one month to the next",
+   "plain": "Every person present in both 2026-09-30 and 2026-10-31 has the same customer key in both, so history lines up.",
+   "sql": "SELECT (SELECT count(*) FROM customer_360_prev p JOIN customer_360 c ON p.core_a_cif = c.core_a_cif\n                         WHERE p.customer_key != c.customer_key)\n                      + (SELECT count(*) FROM customer_360_prev p JOIN customer_360 c ON p.core_b_customer_id = c.core_b_customer_id\n                         WHERE p.customer_key != c.customer_key\n                           AND NOT (p.source_systems = 'core_b' AND c.source_systems = 'core_a+core_b'))",
+   "value": 0,
+   "expected": 0,
+   "passed": true,
+   "detail": "A Riverside-only person whom a reviewer merged this month legitimately moves to the Harbor key (ER-07)"
+  },
+  {
+   "id": "Q-10",
+   "title": "A person's 'quiet checking' flag matches their accounts",
+   "plain": "A person is marked as having a quiet checking account exactly when at least one of their open checking accounts is quiet.",
+   "sql": "SELECT count(*) FROM customer_360 c\n             LEFT JOIN (SELECT customer_key, bool_or(is_dormant_180d) AS any_dormant FROM account_360\n                        WHERE is_open AND product_type = 'checking' GROUP BY 1) a USING (customer_key)\n             WHERE c.checking_dormant_180d != coalesce(a.any_dormant, false)",
+   "value": 0,
+   "expected": 0,
+   "passed": true,
+   "detail": "customer_360.checking_dormant_180d versus bool_or(account_360.is_dormant_180d) over open checking accounts"
   }
  ]
 }

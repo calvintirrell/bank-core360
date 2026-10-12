@@ -12,7 +12,7 @@
   "account_360": {
    "metadata_dir": "lakehouse/iceberg/warehouse/gold/account_360/metadata",
    "snapshots": 3,
-   "rows": 5021,
+   "rows": 5008,
    "as_of": "2026-10-31"
   },
   "review_queue": {

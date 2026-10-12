@@ -9,10 +9,12 @@
  "review_queue_before": 27,
  "review_queue_after": 20,
  "address_changes": 15,
- "accounts_went_quiet": 110,
- "accounts_woke_up": 59,
- "new_accounts": 94,
- "transactions_in_new_month": 4167,
+ "accounts_went_quiet": 93,
+ "accounts_woke_up": 58,
+ "checking_accounts_went_quiet": 12,
+ "checking_accounts_woke_up": 8,
+ "new_accounts": 81,
+ "transactions_in_new_month": 4175,
  "deposits_before": 116009530.27,
- "deposits_after": 118077003.2
+ "deposits_after": 117965170.62
 }

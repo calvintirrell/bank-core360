@@ -69,7 +69,10 @@ export function PeopleCards({ rows }: { rows: Record<string, unknown>[] }) {
                 {dormant && (
                   <li className="font-medium text-red-700">
                     A checking account has been <Term k="dormant">quiet for 6+ months</Term>
-                    {r.checking_last_txn_ts ? ` (last used ${dateFmt(r.checking_last_txn_ts)})` : ''}
+                    {r.dormant_checking_last_txn_ts ? ` (last used ${dateFmt(r.dormant_checking_last_txn_ts)})` : ''}
+                    {r.dormant_checking_last_txn_ts && r.checking_last_txn_ts && String(r.checking_last_txn_ts) !== String(r.dormant_checking_last_txn_ts)
+                      ? `; another checking account was used ${dateFmt(r.checking_last_txn_ts)}`
+                      : ''}
                   </li>
                 )}
                 {match && <li className="text-slate-500">{match}</li>}

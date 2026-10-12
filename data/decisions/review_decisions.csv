@@ -1,8 +1,8 @@
 core_a_cif,core_b_customer_id,decision,decided_on,reviewer,note
-10002336,92dd7a3c-fe10-40a3-b275-fb3e18910fc0,confirm,2026-10-10,ops-reviewer-1,Same person: confirmed by call and ID on file
-10001944,a79448bf-6ffe-4b73-8f1b-6005fb596732,confirm,2026-10-10,ops-reviewer-1,Same person: confirmed by call and ID on file
-10004824,3d5aee63-8e21-4789-8f13-3ea43ba3d2d6,confirm,2026-10-10,ops-reviewer-1,Same person: confirmed by call and ID on file
-10004889,aaaa6190-eeab-4268-afbd-b02ddbaa3c4c,confirm,2026-10-10,ops-reviewer-1,Same person: confirmed by call and ID on file
-10000624,a24780e7-83df-4ee8-be48-2bca1142db3e,confirm,2026-10-10,ops-reviewer-1,Same person: confirmed by call and ID on file
-10000631,68edc466-2a76-4ec4-b345-44294900fef6,reject,2026-10-12,ops-reviewer-1,Different people: addresses and phones never matched
-10004965,c6b8b030-a887-4f74-a76e-77dc02d47ce6,reject,2026-10-12,ops-reviewer-1,Different people: addresses and phones never matched
+10002486,92dd7a3c-fe10-40a3-b275-fb3e18910fc0,confirm,2026-10-10,ops-reviewer-1,Same person: confirmed by call and ID on file
+10002073,a79448bf-6ffe-4b73-8f1b-6005fb596732,confirm,2026-10-10,ops-reviewer-1,Same person: confirmed by call and ID on file
+10004969,3d5aee63-8e21-4789-8f13-3ea43ba3d2d6,confirm,2026-10-10,ops-reviewer-1,Same person: confirmed by call and ID on file
+10005027,aaaa6190-eeab-4268-afbd-b02ddbaa3c4c,confirm,2026-10-10,ops-reviewer-1,Same person: confirmed by call and ID on file
+10001391,a24780e7-83df-4ee8-be48-2bca1142db3e,confirm,2026-10-10,ops-reviewer-1,Same person: confirmed by call and ID on file
+10001064,68edc466-2a76-4ec4-b345-44294900fef6,reject,2026-10-12,ops-reviewer-1,Different people: addresses and phones never matched
+10005624,c6b8b030-a887-4f74-a76e-77dc02d47ce6,reject,2026-10-12,ops-reviewer-1,Different people: addresses and phones never matched

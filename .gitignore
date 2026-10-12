@@ -28,3 +28,4 @@ site/public/data/
 
 # cloudflare worker local state
 .wrangler/
+.dev.vars*

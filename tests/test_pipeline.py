@@ -1,25 +1,18 @@
-"""End-to-end checks on the pipeline outputs. The pipeline runs once per session (about 3 s)."""
+"""End-to-end checks on the pipeline outputs. conftest.py runs the pipeline once per session
+(about 3 s) into a temporary data root, so the tracked lakehouse is never touched."""
 
 from __future__ import annotations
 
 import csv
 import json
-import subprocess
-import sys
 
 import duckdb
 import polars as pl
 import pytest
 
-from pipeline import BATCHES, EXPORT, ROOT, SILVER, TRUTH, raw_dir
+from pipeline import BATCHES, EXPORT, SILVER, TRUTH, raw_dir
 from pipeline.delta import read_table
 from pipeline.lineage import LINEAGE
-
-
-@pytest.fixture(scope="session", autouse=True)
-def run_pipeline() -> None:
-    subprocess.run([sys.executable, "-m", "pipeline"], cwd=ROOT, check=True, capture_output=True)
-
 
 V0 = EXPORT / "v0"
 
@@ -128,13 +121,19 @@ def test_reviewer_decisions_apply_only_from_batch_two(match_report, match_report
     assert changes["customers_merged_by_reviewer"] == 5 and changes["pairs_rejected_by_reviewer"] == 2
 
 
-def test_changes_between_batches_are_sane(changes):
+def test_changes_between_batches_are_sane(changes, con):
     assert changes["new_customers"] == 40
     assert changes["customers_after"] == changes["customers_before"] + 40 - 5
     assert 10 <= changes["address_changes"] <= 25
-    assert changes["accounts_woke_up"] >= 8
-    assert changes["accounts_went_quiet"] >= 12
+    # the generator designed 8 checking accounts to wake up and 12 to go quiet; the moving window adds a few more
+    assert 8 <= changes["checking_accounts_woke_up"] <= changes["accounts_woke_up"]
+    assert 12 <= changes["checking_accounts_went_quiet"] <= changes["accounts_went_quiet"]
     assert changes["transactions_in_new_month"] > 3000
+    # new_accounts counts accounts that did not exist last month, not a net of opens and closes
+    opened = con.sql("SELECT count(*) FROM account_360 a ANTI JOIN account_360_v0 b USING (source_system, source_account_id)").fetchone()[0]
+    assert changes["new_accounts"] == opened >= 40
+    # reviewer counts are for this batch only
+    assert changes["customers_merged_by_reviewer"] == 5 and changes["pairs_rejected_by_reviewer"] == 2
 
 
 def test_each_overlap_kind_lands_where_designed(match_report_v0):
@@ -255,7 +254,7 @@ def test_iceberg_mirror_matches_gold(con):
         rows = tbl.scan().to_arrow().num_rows
         assert rows == con.sql(f"SELECT count(*) FROM {name}").fetchone()[0]
         assert summary["tables"][name]["rows"] == rows
-        assert len(list(tbl.snapshots())) >= 2  # batch 1 append, batch 2 overwrite
+        assert len(list(tbl.snapshots())) == 2 * len(BATCHES) - 1  # batch 1 append; each later batch = delete + append
 
 
 # --- lineage ------------------------------------------------------------------------------------

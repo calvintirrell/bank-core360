@@ -9,9 +9,15 @@ Tier 2:     confidence = 0.40*name_similarity + 0.30*ssn + 0.15*phone + 0.15*pos
 Review:     0.55 <= confidence < 0.80 -> not merged, listed in the review queue (ER-05).
 One-to-one: greedy assignment by confidence, each source record merges at most once (ER-06).
 Keys:       customer_key = stable surrogate hashed from the source id; a merged pair takes the Core A key (ER-07).
+            Two different source records can never share a key: a hash collision stops the pipeline
+            (KeyCollisionError) instead of silently folding two people into one row.
 Decisions:  data/decisions/review_decisions.csv holds human decisions on queued pairs; a confirmed
             pair merges as tier 3 (confidence 1.0) and a rejected pair can never merge (ER-08).
-            Only decisions dated on or before the batch's as-of date apply.
+            Only decisions dated on or before the batch's as-of date apply; later ones are reported
+            as pending. A decision is honoured whether or not the matcher scored the pair itself
+            (a reviewer can confirm a pair the rules could not see); a decision naming an id that
+            is not in the batch is reported as ignored. Every decision's status is in the match
+            report, so nothing is dropped silently; a malformed row stops the pipeline.
 """
 
 from __future__ import annotations
@@ -19,13 +25,15 @@ from __future__ import annotations
 import csv
 import hashlib
 import json
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
+from datetime import date
 
 import polars as pl
 from rapidfuzz import fuzz
 
-from pipeline import ROOT, SILVER, TRUTH, get_as_of, version_dir
+from pipeline import DECISIONS, SILVER, TRUTH, get_as_of, version_dir
 from pipeline.delta import read_table, write_table
+from pipeline.quality import KeyCollisionError
 
 AUTO_MERGE = 0.80
 REVIEW_FLOOR = 0.55
@@ -68,34 +76,114 @@ def score_pairs(cust: pl.DataFrame) -> list[Candidate]:
     return out
 
 
-def load_decisions() -> dict[tuple[str, str], str]:
-    """ER-08: reviewer decisions that apply as of the current batch: {(a_id, b_id): 'confirm'|'reject'}."""
-    path = ROOT / "data" / "decisions" / "review_decisions.csv"
+@dataclass
+class Decision:
+    core_a_cif: str
+    core_b_customer_id: str
+    decision: str  # confirm | reject
+    decided_on: date
+    reviewer: str
+    status: str = "pending"  # applied | pending (dated after this batch) | ignored_unknown_id
+    was_candidate: bool | None = None  # did the matcher score this pair itself?
+
+
+def load_decisions() -> list[Decision]:
+    """ER-08: every row of review_decisions.csv, validated. Dates are parsed (not compared as text)
+    and an unknown decision value or a malformed date stops the pipeline instead of being skipped."""
+    path = DECISIONS / "review_decisions.csv"
     if not path.exists():
-        return {}
-    out: dict[tuple[str, str], str] = {}
+        return []
+    out: list[Decision] = []
     with path.open() as f:
-        for r in csv.DictReader(f):
-            if r["decided_on"] <= get_as_of().isoformat():
-                out[(r["core_a_cif"], r["core_b_customer_id"])] = r["decision"]
+        for n, r in enumerate(csv.DictReader(f), start=2):
+            if r["decision"] not in ("confirm", "reject"):
+                raise ValueError(f"{path.name} line {n}: decision must be confirm or reject, got {r['decision']!r}")
+            try:
+                decided_on = date.fromisoformat(r["decided_on"])
+            except ValueError as e:
+                raise ValueError(f"{path.name} line {n}: decided_on must be an ISO date, got {r['decided_on']!r}") from e
+            out.append(Decision(r["core_a_cif"].strip(), r["core_b_customer_id"].strip(), r["decision"], decided_on, r.get("reviewer", "")))
     return out
 
 
+def _pair_features(cust: pl.DataFrame, a_id: str, b_id: str) -> Candidate:
+    """Score one named pair the way score_pairs would, for a reviewer-confirmed pair the blocking
+    rule never put in front of the scorer (different DOB on file, for instance)."""
+    a = cust.filter((pl.col("source_system") == "core_a") & (pl.col("source_customer_id") == a_id)).row(0, named=True)
+    b = cust.filter((pl.col("source_system") == "core_b") & (pl.col("source_customer_id") == b_id)).row(0, named=True)
+    name_sim = fuzz.token_set_ratio(a["name_key"], b["name_key"]) / 100.0
+    ssn_signal = 1.0 if (a["ssn_last4"] and b["ssn_last4"]) else 0.5
+    return Candidate(a_id, b_id, name_sim, ssn_signal, a["phone_digits"] == b["phone_digits"], a["postal_code"] == b["postal_code"], 1.0, 3)
+
+
+def apply_decisions(cust: pl.DataFrame, candidates: list[Candidate], decisions: list[Decision]) -> list[Candidate]:
+    """ER-08. Sets each decision's status in place and returns the candidate list with confirmed
+    pairs promoted to tier 3 (added if the scorer never saw them) and rejected pairs removed."""
+    as_of = get_as_of()
+    a_ids = set(cust.filter(pl.col("source_system") == "core_a")["source_customer_id"].to_list())
+    b_ids = set(cust.filter(pl.col("source_system") == "core_b")["source_customer_id"].to_list())
+    by_pair = {(c.a_id, c.b_id): c for c in candidates}
+    rejected: set[tuple[str, str]] = set()
+    for d in decisions:
+        pair = (d.core_a_cif, d.core_b_customer_id)
+        if d.decided_on > as_of:
+            d.status = "pending"
+            continue
+        if d.core_a_cif not in a_ids or d.core_b_customer_id not in b_ids:
+            d.status = "ignored_unknown_id"
+            continue
+        d.status = "applied"
+        d.was_candidate = pair in by_pair
+        if d.decision == "confirm":
+            c = by_pair.get(pair)
+            if c is None:
+                c = _pair_features(cust, *pair)
+                candidates.append(c)
+                by_pair[pair] = c
+            c.tier, c.confidence = 3, 1.0
+        else:
+            rejected.add(pair)
+    return [c for c in candidates if (c.a_id, c.b_id) not in rejected]
+
+
+def decisions_summary(decisions: list[Decision]) -> dict:
+    counts = {s: sum(1 for d in decisions if d.status == s) for s in ("applied", "pending", "ignored_unknown_id")}
+    return {
+        "total": len(decisions),
+        **counts,
+        "confirm_applied": sum(1 for d in decisions if d.status == "applied" and d.decision == "confirm"),
+        "reject_applied": sum(1 for d in decisions if d.status == "applied" and d.decision == "reject"),
+        "rows": [{**asdict(d), "decided_on": d.decided_on.isoformat()} for d in decisions],
+    }
+
+
+KEY_DIGITS = 7
+
+
 def stable_key(system: str, source_id: str) -> str:
-    """C + 7 digits from a hash of the source id (ER-07). Uniqueness is enforced by the quality checks."""
+    """C + KEY_DIGITS digits from a hash of the source id (ER-07). The key space is small on purpose
+    (readable keys); `assert_keys_unique` refuses a collision rather than hoping for none."""
     digest = hashlib.sha1(f"{system}:{source_id}".encode()).hexdigest()
-    return f"C{int(digest[:10], 16) % 10_000_000:07d}"
+    return f"C{int(digest[:10], 16) % 10**KEY_DIGITS:0{KEY_DIGITS}d}"
+
+
+def assert_keys_unique(rows: list[dict]) -> int:
+    """Every key is owned by exactly one source record, except that a merged pair shares the Core A
+    key by design. Returns the number of keys issued; raises KeyCollisionError on any collision."""
+    owner: dict[str, tuple[str, str]] = {}
+    for r in rows:
+        if r["source_system"] == "core_b" and r["matched_with"] is not None:
+            continue  # takes its Core A partner's key (ER-07)
+        me = (r["source_system"], r["source_customer_id"])
+        other = owner.setdefault(r["customer_key"], me)
+        if other != me:
+            raise KeyCollisionError(f"customer_key {r['customer_key']} hashed from both {other} and {me}; widen KEY_DIGITS")
+    return len(owner)
 
 
 def resolve(cust: pl.DataFrame) -> tuple[pl.DataFrame, pl.DataFrame, dict]:
     decisions = load_decisions()
-    candidates = score_pairs(cust)
-    # ER-08: apply reviewer decisions before the greedy pass
-    for c in candidates:
-        d = decisions.get((c.a_id, c.b_id))
-        if d == "confirm":
-            c.tier, c.confidence = 3, 1.0
-    candidates = [c for c in candidates if decisions.get((c.a_id, c.b_id)) != "reject"]
+    candidates = apply_decisions(cust, score_pairs(cust), decisions)  # ER-08, before the greedy pass
     candidates.sort(key=lambda c: (-c.confidence, c.a_id, c.b_id))
     used_a: set[str] = set()
     used_b: set[str] = set()
@@ -157,6 +245,7 @@ def resolve(cust: pl.DataFrame) -> tuple[pl.DataFrame, pl.DataFrame, dict]:
         if r["source_system"] == "core_a" and r["source_customer_id"] in a_side:
             c = a_side[r["source_customer_id"]]
             r.update(match_tier=c.tier, match_confidence=c.confidence, matched_with=c.b_id)
+    keys_issued = assert_keys_unique(rows)
     xref = pl.DataFrame(
         rows,
         schema={
@@ -193,8 +282,10 @@ def resolve(cust: pl.DataFrame) -> tuple[pl.DataFrame, pl.DataFrame, dict]:
     )
     report = score_against_truth(merged, review)
     report["candidates_scored"] = len(candidates)
+    report["decisions"] = decisions_summary(decisions)
     report["confirmed_by_reviewer"] = sum(1 for c in merged.values() if c.tier == 3)
-    report["rejected_by_reviewer"] = sum(1 for d in decisions.values() if d == "reject")
+    report["rejected_by_reviewer"] = report["decisions"]["reject_applied"]
+    report["keys"] = {"format": f"C + {KEY_DIGITS} digits (sha1 of system:id)", "issued": keys_issued, "collisions": 0}
     report["as_of"] = get_as_of().isoformat()
     return xref, review_df, report
 
@@ -246,11 +337,13 @@ def score_against_truth(merged: dict[str, Candidate], review: list[Candidate]) -
     return report
 
 
-def run() -> dict:
+def run(fresh: bool = True) -> dict:
     cust = read_table(SILVER, "customers")
     xref, review_df, report = resolve(cust)
-    write_table(xref, SILVER, "customer_xref", "Source customer -> resolved customer_key with match tier and confidence")
-    write_table(review_df, SILVER, "match_review_queue", "Cross-core candidate pairs below auto-merge threshold, for human review")
+    write_table(xref, SILVER, "customer_xref", "Source customer -> resolved customer_key with match tier and confidence", fresh=fresh)
+    write_table(
+        review_df, SILVER, "match_review_queue", "Cross-core candidate pairs below auto-merge threshold, for human review", fresh=fresh
+    )
     out = version_dir()
     out.mkdir(parents=True, exist_ok=True)
     (out / "match_report.json").write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")

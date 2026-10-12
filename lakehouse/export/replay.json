@@ -4,8 +4,8 @@
   {
    "id": "mortgage-dormant-checking",
    "question": "Which mortgage customers have a checking account that has gone quiet for six months?",
-   "fingerprint": "b3b29e8d1025de9c",
-   "sql": "SELECT customer_key, full_name, source_systems, loan_balance, checking_last_txn_ts\nFROM customer_360\nWHERE has_mortgage AND checking_dormant_180d\nORDER BY loan_balance DESC\nLIMIT 25",
+   "fingerprint": "241851cd9a5e0b36",
+   "sql": "SELECT customer_key, full_name, source_systems, loan_balance, dormant_checking_last_txn_ts\nFROM customer_360\nWHERE has_mortgage AND checking_dormant_180d\nORDER BY loan_balance DESC\nLIMIT 25",
    "follow_ups": [
     "Which of those have the biggest mortgages?",
     "How many of them came from Riverside Bank?",
@@ -17,625 +17,193 @@
      "full_name",
      "source_systems",
      "loan_balance",
-     "checking_last_txn_ts"
+     "dormant_checking_last_txn_ts"
     ],
     "rows": [
      [
-      "C4656439",
-      "Regina Martin",
-      "core_a+core_b",
-      1028962.1,
-      "2026-03-08T21:40:12"
-     ],
-     [
-      "C5686592",
+      "C3038388",
       "Susan York",
       "core_a+core_b",
       933727.05,
-      "2026-10-27T00:00:00"
+      "2026-03-23T20:37:15"
      ],
      [
-      "C7701243",
+      "C5592136",
       "Timothy Jenkins",
       "core_a+core_b",
       933677.92,
-      "2026-03-17T07:47:16"
+      "2026-03-26T21:34:19"
      ],
      [
-      "C9934456",
-      "Morgan Richards",
+      "C6507707",
+      "Christopher Mclaughlin",
       "core_a+core_b",
-      708849.04,
-      "2026-10-10T00:00:00"
+      672294.72,
+      "2026-03-25T08:15:05"
      ],
      [
-      "C2868919",
-      "Bradley Hodges",
-      "core_a+core_b",
-      647042.25,
-      "2026-10-21T15:34:34"
-     ],
-     [
-      "C3648252",
+      "C3733721",
       "Samuel Grimes",
       "core_a+core_b",
       641416.82,
-      "2026-10-28T00:00:00"
+      null
      ],
      [
-      "C4313114",
+      "C7830894",
       "Jeremy Elliott",
       "core_a+core_b",
       637410.64,
-      "2026-10-12T00:00:00"
+      "2026-03-28T13:36:06"
      ],
      [
-      "C9209993",
+      "C7895596",
       "Jennifer Clark",
       "core_a+core_b",
       618948.16,
-      "2026-10-16T00:00:00"
+      "2026-03-25T06:54:23"
      ],
      [
-      "C6166398",
+      "C6969833",
       "James Ayala",
       "core_a+core_b",
       613294.66,
-      "2026-03-29T16:16:11"
+      "2026-03-23T11:28:04"
      ],
      [
-      "C9207219",
-      "Sharon Fletaher",
+      "C7557381",
+      "Alexander Diaz",
+      "core_b",
+      597742.5,
+      null
+     ],
+     [
+      "C1774095",
+      "Jim Fletcher",
       "core_a+core_b",
       597527.23,
-      "2026-10-01T00:00:00"
+      "2026-02-26T03:10:32"
      ],
      [
-      "C1081055",
+      "C5213777",
+      "Bill Buckley",
+      "core_a+core_b",
+      593556.42,
+      "2026-04-14T02:00:10"
+     ],
+     [
+      "C9150107",
+      "Margaret Clayton",
+      "core_a",
+      593194.12,
+      "2026-04-17T00:00:00"
+     ],
+     [
+      "C2138191",
       "John Moore",
       "core_a+core_b",
       591114.32,
-      "2026-10-21T00:00:00"
+      "2026-03-27T21:02:40"
      ],
      [
       "C3777398",
       "Andrew Dixon",
       "core_b",
       583225.37,
-      "2026-03-23T05:53:59"
+      "2026-03-28T04:57:26"
      ],
      [
-      "C9980359",
+      "C0922410",
+      "Rebecca Williams",
+      "core_b",
+      579594.43,
+      "2026-04-08T00:57:12"
+     ],
+     [
+      "C9261292",
       "Joseph Robinson",
       "core_a",
       571923.02,
-      "2026-03-27T00:00:00"
+      "2026-03-26T00:00:00"
      ],
      [
-      "C2287254",
-      "Alexander Carter",
-      "core_a",
-      569776.33,
-      "2026-03-18T00:00:00"
+      "C8736190",
+      "Leslie Kaiser",
+      "core_a+core_b",
+      567600.15,
+      "2026-03-23T17:25:28"
      ],
      [
-      "C4598126",
-      "Ryan Ramirez",
-      "core_a",
-      568109.11,
-      null
-     ],
-     [
-      "C3841788",
+      "C8007054",
       "Paul Hooper",
       "core_a+core_b",
       561713.0,
-      "2026-03-26T21:01:25"
+      "2026-04-01T12:23:29"
      ],
      [
       "C3662149",
       "Matthew Merritt",
       "core_b",
       549692.28,
-      "2026-03-31T13:23:42"
+      "2026-03-19T23:57:49"
      ],
      [
-      "C5771838",
+      "C1108063",
       "James Garcia",
       "core_a+core_b",
       530597.89,
-      "2026-03-30T01:48:31"
+      "2026-03-18T13:47:08"
      ],
      [
-      "C8217380",
+      "C1591435",
       "Diana White-Shaw",
       "core_a+core_b",
       517259.03,
-      "2026-10-20T00:00:00"
+      "2026-03-25T00:22:12"
      ],
      [
-      "C8585498",
+      "C7778004",
       "Sheila Hebert",
       "core_a",
       508743.29,
-      "2026-03-24T00:00:00"
+      "2026-03-07T00:00:00"
      ],
      [
-      "C8460462",
+      "C2733936",
       "Jennifer Drake",
       "core_a+core_b",
       507443.78,
-      "2026-03-31T06:58:37"
+      "2026-04-01T20:02:17"
      ],
      [
-      "C8711524",
+      "C1150994",
       "Sharon Cook",
       "core_a+core_b",
       503699.19,
-      "2026-10-27T00:00:00"
+      "2026-03-06T10:29:05"
      ],
      [
-      "C2819392",
-      "Katherine Rogers",
-      "core_b",
-      490277.87,
-      "2026-04-13T06:42:48"
+      "C1796626",
+      "David Mccarty",
+      "core_a+core_b",
+      487699.04,
+      "2026-03-24T07:09:49"
      ],
      [
-      "C6692839",
-      "Thomas Fletcher",
-      "core_a",
-      479173.14,
-      "2026-04-01T00:00:00"
-     ],
-     [
-      "C5242072",
-      "Katherine Henry",
-      "core_a",
-      477054.79,
-      "2026-04-15T00:00:00"
+      "C5964141",
+      "Susan Fernandez",
+      "core_a+core_b",
+      480544.8,
+      "2026-03-07T19:26:00"
      ]
     ],
     "row_count": 25
    },
-   "agent": {
-    "model": "claude-opus-5-5",
-    "calls": 2,
-    "usage": {
-     "input_tokens": 10198,
-     "output_tokens": 570
-    },
-    "steps": [
-     {
-      "sql": "SELECT customer_key, full_name, source_systems, loan_balance, deposit_balance, checking_last_txn_ts FROM customer_360 WHERE has_mortgage AND checking_dormant_180d ORDER BY loan_balance DESC LIMIT 200",
-      "result": {
-       "columns": [
-        "customer_key",
-        "full_name",
-        "source_systems",
-        "loan_balance",
-        "deposit_balance",
-        "checking_last_txn_ts"
-       ],
-       "rows": [
-        [
-         "C4656439",
-         "Regina Martin",
-         "core_a+core_b",
-         1028962.1,
-         33081.41,
-         "2026-03-08T21:40:12"
-        ],
-        [
-         "C5686592",
-         "Susan York",
-         "core_a+core_b",
-         933727.05,
-         19160.28,
-         "2026-10-27T00:00:00"
-        ],
-        [
-         "C7701243",
-         "Timothy Jenkins",
-         "core_a+core_b",
-         933677.92,
-         108282.44,
-         "2026-03-17T07:47:16"
-        ],
-        [
-         "C9934456",
-         "Morgan Richards",
-         "core_a+core_b",
-         708849.04,
-         162962.05,
-         "2026-10-10T00:00:00"
-        ],
-        [
-         "C2868919",
-         "Bradley Hodges",
-         "core_a+core_b",
-         647042.25,
-         109141.56,
-         "2026-10-21T15:34:34"
-        ],
-        [
-         "C3648252",
-         "Samuel Grimes",
-         "core_a+core_b",
-         641416.82,
-         28538.96,
-         "2026-10-28T00:00:00"
-        ],
-        [
-         "C4313114",
-         "Jeremy Elliott",
-         "core_a+core_b",
-         637410.64,
-         95814.98,
-         "2026-10-12T00:00:00"
-        ],
-        [
-         "C9209993",
-         "Jennifer Clark",
-         "core_a+core_b",
-         618948.16,
-         45645.33,
-         "2026-10-16T00:00:00"
-        ],
-        [
-         "C6166398",
-         "James Ayala",
-         "core_a+core_b",
-         613294.66,
-         18049.01,
-         "2026-03-29T16:16:11"
-        ],
-        [
-         "C9207219",
-         "Sharon Fletaher",
-         "core_a+core_b",
-         597527.23,
-         184848.28,
-         "2026-10-01T00:00:00"
-        ],
-        [
-         "C1081055",
-         "John Moore",
-         "core_a+core_b",
-         591114.32,
-         22557.31,
-         "2026-10-21T00:00:00"
-        ],
-        [
-         "C3777398",
-         "Andrew Dixon",
-         "core_b",
-         583225.37,
-         61272.45,
-         "2026-03-23T05:53:59"
-        ],
-        [
-         "C9980359",
-         "Joseph Robinson",
-         "core_a",
-         571923.02,
-         18422.11,
-         "2026-03-27T00:00:00"
-        ],
-        [
-         "C2287254",
-         "Alexander Carter",
-         "core_a",
-         569776.33,
-         48252.83,
-         "2026-03-18T00:00:00"
-        ],
-        [
-         "C4598126",
-         "Ryan Ramirez",
-         "core_a",
-         568109.11,
-         22950.7,
-         null
-        ],
-        [
-         "C3841788",
-         "Paul Hooper",
-         "core_a+core_b",
-         561713.0,
-         73280.38,
-         "2026-03-26T21:01:25"
-        ],
-        [
-         "C3662149",
-         "Matthew Merritt",
-         "core_b",
-         549692.28,
-         91475.62,
-         "2026-03-31T13:23:42"
-        ],
-        [
-         "C5771838",
-         "James Garcia",
-         "core_a+core_b",
-         530597.89,
-         117982.98,
-         "2026-03-30T01:48:31"
-        ],
-        [
-         "C8217380",
-         "Diana White-Shaw",
-         "core_a+core_b",
-         517259.03,
-         78248.35,
-         "2026-10-20T00:00:00"
-        ],
-        [
-         "C8585498",
-         "Sheila Hebert",
-         "core_a",
-         508743.29,
-         126047.09,
-         "2026-03-24T00:00:00"
-        ],
-        [
-         "C8460462",
-         "Jennifer Drake",
-         "core_a+core_b",
-         507443.78,
-         46367.46,
-         "2026-03-31T06:58:37"
-        ],
-        [
-         "C8711524",
-         "Sharon Cook",
-         "core_a+core_b",
-         503699.19,
-         52640.31,
-         "2026-10-27T00:00:00"
-        ],
-        [
-         "C2819392",
-         "Katherine Rogers",
-         "core_b",
-         490277.87,
-         100641.76,
-         "2026-04-13T06:42:48"
-        ],
-        [
-         "C6692839",
-         "Thomas Fletcher",
-         "core_a",
-         479173.14,
-         3438.61,
-         "2026-04-01T00:00:00"
-        ],
-        [
-         "C5242072",
-         "Katherine Henry",
-         "core_a",
-         477054.79,
-         22748.23,
-         "2026-04-15T00:00:00"
-        ],
-        [
-         "C3110848",
-         "Olivia Torres",
-         "core_a",
-         473383.52,
-         56220.2,
-         "2026-03-27T00:00:00"
-        ],
-        [
-         "C5833814",
-         "Shawn Drake",
-         "core_b",
-         472284.1,
-         105460.85,
-         null
-        ],
-        [
-         "C2682855",
-         "Christopher Russell",
-         "core_a",
-         468063.65,
-         1803.96,
-         "2026-03-27T00:00:00"
-        ],
-        [
-         "C1035573",
-         "Taylor Davidson",
-         "core_a+core_b",
-         465517.34,
-         111598.7,
-         "2026-09-27T00:00:00"
-        ],
-        [
-         "C6632941",
-         "Joshua Butler",
-         "core_b",
-         458883.71,
-         24924.55,
-         "2026-03-03T05:47:15"
-        ],
-        [
-         "C9563255",
-         "Rebecca Sanchez-Williams",
-         "core_a+core_b",
-         458045.89,
-         81505.56,
-         "2026-10-28T00:00:00"
-        ],
-        [
-         "C3484071",
-         "Jennifer Wallace",
-         "core_a",
-         456275.74,
-         5286.47,
-         "2026-04-01T00:00:00"
-        ],
-        [
-         "C9720069",
-         "Kyle West",
-         "core_b",
-         456129.7,
-         101364.36,
-         "2026-03-30T12:05:20"
-        ],
-        [
-         "C8413612",
-         "Jennifer Brown",
-         "core_b",
-         447431.74,
-         875.05,
-         "2026-03-31T09:29:04"
-        ],
-        [
-         "C2802274",
-         "Joshua Harper",
-         "core_a+core_b",
-         444017.75,
-         238768.39,
-         "2026-10-02T00:00:00"
-        ],
-        [
-         "C2745565",
-         "James Reynolds",
-         "core_b",
-         436986.06,
-         49673.95,
-         "2026-03-20T07:52:34"
-        ],
-        [
-         "C4215896",
-         "Thomas Davis",
-         "core_a+core_b",
-         433434.31,
-         59516.9,
-         "2026-10-30T00:00:00"
-        ],
-        [
-         "C3055105",
-         "James Stone",
-         "core_a",
-         431858.81,
-         80208.74,
-         "2026-03-16T00:00:00"
-        ],
-        [
-         "C0073646",
-         "Margaret Clark",
-         "core_b",
-         430194.23,
-         120800.17,
-         "2026-03-30T18:07:02"
-        ],
-        [
-         "C8931300",
-         "Debra Chapman",
-         "core_a+core_b",
-         424708.01,
-         230670.39,
-         "2026-10-13T00:00:00"
-        ],
-        [
-         "C5943330",
-         "David Flynn",
-         "core_a+core_b",
-         413754.79,
-         56492.09,
-         "2026-10-26T00:00:00"
-        ],
-        [
-         "C7358794",
-         "Patricia Maxwell",
-         "core_a+core_b",
-         413199.24,
-         195234.03,
-         "2026-02-14T00:08:39"
-        ],
-        [
-         "C1667651",
-         "Michael Morgan",
-         "core_b",
-         410734.38,
-         45212.55,
-         "2026-03-30T16:29:30"
-        ],
-        [
-         "C5919598",
-         "Hailey Lowery",
-         "core_a+core_b",
-         403973.04,
-         71482.97,
-         "2026-10-26T00:00:00"
-        ],
-        [
-         "C7624885",
-         "James Gibbs",
-         "core_a+core_b",
-         403500.02,
-         104580.65,
-         "2026-10-29T00:00:00"
-        ],
-        [
-         "C7597136",
-         "Michael Jones",
-         "core_a",
-         402859.82,
-         18140.34,
-         "2026-03-31T00:00:00"
-        ],
-        [
-         "C7492672",
-         "Amber Skinner",
-         "core_a+core_b",
-         395829.96,
-         21481.5,
-         "2026-10-28T00:00:00"
-        ],
-        [
-         "C6437709",
-         "Nicole Lynch",
-         "core_b",
-         378475.2,
-         46782.93,
-         "2026-03-30T19:11:45"
-        ],
-        [
-         "C5397731",
-         "Amy Lane",
-         "core_a",
-         374517.04,
-         15218.84,
-         "2026-03-28T00:00:00"
-        ],
-        [
-         "C6746963",
-         "Wendy Pruitt",
-         "core_a+core_b",
-         365393.51,
-         210091.99,
-         "2026-10-07T00:00:00"
-        ]
-       ],
-       "row_count": 112
-      },
-      "error": null
-     }
-    ],
-    "explanation": "**112 mortgage customers** have at least one open checking account with no transactions in the last 180 days, counting back from 2026-10-31. Many have large loan balances. The biggest are Regina Martin ($1.03M loan, checking last used 2026-03-08), Susan York ($934K) and Timothy Jenkins ($934K).\n\n- Some of these customers, such as Susan York and Samuel Grimes, show recent checking activity. That's because the flag is set if *any* of their open checking accounts is dormant, and they still use a different checking account (G-11, G-10). Check account_360 to see which account has gone quiet.\n- A few, such as Ryan Ramirez and Shawn Drake, show no checking transaction date at all. Their checking accounts have had no activity in the whole 365-day feed. Also, customers still waiting in the review queue appear as two separate people, so a mortgage in one bank and a quiet checking account in the other won't show up here (ER-05).",
-    "follow_ups": [
-     "Which specific checking accounts are dormant for these customers?",
-     "How much deposit balance sits in those dormant checking accounts?",
-     "How do these split between Harbor Bank and Riverside Bank?"
-    ]
-   }
+   "agent": null
   },
   {
    "id": "cross-core-confidence",
    "question": "How many of our customers were in both banks, and how sure are we they are the same people?",
-   "fingerprint": "798182d54a8c75bb",
+   "fingerprint": "0e0f991f462ea6bf",
    "sql": "SELECT match_tier, count(*) AS customers,\n       round(min(match_confidence), 2) AS min_confidence,\n       round(avg(match_confidence), 3) AS avg_confidence\nFROM customer_360\nWHERE source_systems = 'core_a+core_b'\nGROUP BY 1\nORDER BY 1",
    "follow_ups": [
     "Which matches are we least sure about?",
@@ -652,15 +220,15 @@
     "rows": [
      [
       1,
-      198,
+      210,
       1.0,
       1.0
      ],
      [
       2,
-      67,
+      55,
       0.82,
-      0.938
+      0.931
      ],
      [
       3,
@@ -671,81 +239,12 @@
     ],
     "row_count": 3
    },
-   "agent": {
-    "model": "claude-opus-5-5",
-    "calls": 2,
-    "usage": {
-     "input_tokens": 7937,
-     "output_tokens": 690
-    },
-    "steps": [
-     {
-      "sql": "SELECT match_tier, count(*) n, round(min(match_confidence),2) min_conf, round(avg(match_confidence),3) avg_conf, (SELECT count(*) FROM customer_360) total FROM customer_360 WHERE source_systems='core_a+core_b' GROUP BY match_tier ORDER BY match_tier",
-      "result": {
-       "columns": [
-        "match_tier",
-        "n",
-        "min_conf",
-        "avg_conf",
-        "total"
-       ],
-       "rows": [
-        [
-         1,
-         198,
-         1.0,
-         1.0,
-         2070
-        ],
-        [
-         2,
-         67,
-         0.82,
-         0.938,
-         2070
-        ],
-        [
-         3,
-         5,
-         1.0,
-         1.0,
-         2070
-        ]
-       ],
-       "row_count": 3
-      },
-      "error": null
-     },
-     {
-      "sql": "SELECT count(*) pairs, round(sum(combined_balance),0) bal FROM review_queue",
-      "result": {
-       "columns": [
-        "pairs",
-        "bal"
-       ],
-       "rows": [
-        [
-         20,
-         9408315.0
-        ]
-       ],
-       "row_count": 1
-      },
-      "error": null
-     }
-    ],
-    "explanation": "**270 of our 2,070 customers** were matched across Harbor Bank (Core A) and Riverside Bank (Core B). We're fully sure about 203 of them. The other 67 are strong probable matches.\n\n- **198 are exact matches** (confidence 1.00): the name and the last four digits of the SSN agree in both banks.\n- **5 were confirmed by a reviewer** (confidence 1.00).\n- **67 were matched automatically on close similarity** (confidence 0.82\u20131.00, average 0.94). The score weighs how alike the names are, plus SSN, phone and postal code. Pairs scoring 0.80 or higher merge automatically.\n\nThere's also a gray zone: 20 more possible pairs scored between 0.55 and 0.80. They haven't been merged and are waiting for a human to review them. Together they hold about $9.4M in combined balances.\n\n- Until those 20 are resolved, each person in a pair still counts as two separate customers, so 270 may be slightly low (ER-05, G-20).\n- Reviewer decisions only count if they were made on or before the batch date (ER-08).",
-    "follow_ups": [
-     "Which review-queue pairs have the most money at stake?",
-     "What do the 67 similarity-matched customers hold in deposits and loans?",
-     "Which similarity matches are closest to the 0.80 cutoff?"
-    ]
-   }
+   "agent": null
   },
   {
    "id": "deposits-by-state",
    "question": "Where is our deposit money concentrated? Top five states.",
-   "fingerprint": "c216ff1339ed85db",
+   "fingerprint": "bc85831bf52c510e",
    "sql": "SELECT state, count(*) AS customers, round(sum(deposit_balance), 2) AS deposits\nFROM customer_360\nGROUP BY 1\nORDER BY deposits DESC\nLIMIT 5",
    "follow_ups": [
     "How much lending do we have in those states?",
@@ -762,17 +261,17 @@
      [
       "MI",
       51,
-      3362743.68
+      3409799.24
      ],
      [
       "TN",
       40,
-      2850044.39
+      2841997.37
      ],
      [
       "VA",
       46,
-      2717539.73
+      2760765.95
      ],
      [
       "TX",
@@ -787,72 +286,12 @@
     ],
     "row_count": 5
    },
-   "agent": {
-    "model": "claude-opus-5-5",
-    "calls": 2,
-    "usage": {
-     "input_tokens": 7814,
-     "output_tokens": 484
-    },
-    "steps": [
-     {
-      "sql": "SELECT state, ROUND(SUM(deposit_balance),2) AS deposits, COUNT(*) FILTER (WHERE deposit_balance>0) AS depositors, ROUND(100*SUM(deposit_balance)/(SELECT SUM(deposit_balance) FROM customer_360),1) AS pct FROM customer_360 GROUP BY state ORDER BY deposits DESC LIMIT 5",
-      "result": {
-       "columns": [
-        "state",
-        "deposits",
-        "depositors",
-        "pct"
-       ],
-       "rows": [
-        [
-         "MI",
-         3362743.68,
-         47,
-         2.8
-        ],
-        [
-         "TN",
-         2850044.39,
-         37,
-         2.4
-        ],
-        [
-         "VA",
-         2717539.73,
-         44,
-         2.3
-        ],
-        [
-         "TX",
-         2713967.89,
-         42,
-         2.3
-        ],
-        [
-         "IN",
-         2710914.94,
-         44,
-         2.3
-        ]
-       ],
-       "row_count": 5
-      },
-      "error": null
-     }
-    ],
-    "explanation": "Deposits are spread out, not concentrated. The top five states are Michigan ($3.36M, 2.8% of all deposits), Tennessee ($2.85M), Virginia ($2.72M), Texas ($2.71M) and Indiana ($2.71M). Together they hold only about 12% of total deposits.\n\n- State is the Core B value when a customer is in both cores (G-01). Customers who moved may be counted under their newer address.\n- Deposits are open deposit-account balances only (G-05). Pairs in the review queue are still counted as two customers (G-20). This doesn't change the dollar totals, but it can inflate the depositor counts.",
-    "follow_ups": [
-     "How do the top states split between Harbor Bank and Riverside Bank?",
-     "Which cities hold the most deposits?",
-     "Who are the largest depositors in Michigan?"
-    ]
-   }
+   "agent": null
   },
   {
    "id": "dormant-checking-by-core",
    "question": "How many checking accounts have gone quiet, and which bank did they come from?",
-   "fingerprint": "7b41ff852999aa80",
+   "fingerprint": "9874f9af141ff00b",
    "sql": "SELECT source_system, count(*) AS open_checking,\n       sum(CASE WHEN is_dormant_180d THEN 1 ELSE 0 END) AS dormant,\n       round(100.0 * sum(CASE WHEN is_dormant_180d THEN 1 ELSE 0 END) / count(*), 1) AS dormant_pct\nFROM account_360\nWHERE product_type = 'checking' AND is_open\nGROUP BY 1\nORDER BY 1",
    "follow_ups": [
     "Which quiet accounts hold the most money?",
@@ -870,63 +309,24 @@
      [
       "core_a",
       772,
-      65,
-      8.4
+      62,
+      8.0
      ],
      [
       "core_b",
-      877,
-      108,
-      12.3
+      880,
+      107,
+      12.2
      ]
     ],
     "row_count": 2
    },
-   "agent": {
-    "model": "claude-opus-5-5",
-    "calls": 2,
-    "usage": {
-     "input_tokens": 7693,
-     "output_tokens": 400
-    },
-    "steps": [
-     {
-      "sql": "SELECT source_system, count(*) AS dormant_checking, sum(balance) AS balance FROM account_360 WHERE product_type='checking' AND is_dormant_180d GROUP BY 1 ORDER BY 1",
-      "result": {
-       "columns": [
-        "source_system",
-        "dormant_checking",
-        "balance"
-       ],
-       "rows": [
-        [
-         "core_a",
-         65,
-         876129.3699999999
-        ],
-        [
-         "core_b",
-         108,
-         1411860.2899999996
-        ]
-       ],
-       "row_count": 2
-      },
-      "error": null
-     }
-    ],
-    "explanation": "173 open checking accounts have had no transactions in the 180 days before 2026-10-31. Of these, 108 come from Riverside Bank (Core B) and hold $1.41M. The other 65 come from Harbor Bank (Core A) and hold $0.88M. Together they hold about $2.29M.\n\n- I counted \"gone quiet\" as dormant under rule G-10: an open account with zero transactions in 180 days. Closed accounts aren't included.\n- These are account counts, not customers. One customer can have more than one dormant checking account. The customer-level flag (G-11) marks a customer if any of their checking accounts is dormant.",
-    "follow_ups": [
-     "How many distinct customers own these dormant checking accounts?",
-     "Which dormant checking accounts have the largest balances?",
-     "How many accounts went dormant in the last 90 days?"
-    ]
-   }
+   "agent": null
   },
   {
    "id": "acquired-bank-large-mortgages",
    "question": "Which Riverside Bank customers brought over a mortgage above $400,000?",
-   "fingerprint": "f66dad68916987ad",
+   "fingerprint": "b9515013d24e37fb",
    "sql": "SELECT customer_key, full_name, state, loan_balance, open_accounts\nFROM customer_360\nWHERE source_systems = 'core_b' AND has_mortgage AND loan_balance > 400000\nORDER BY loan_balance DESC\nLIMIT 25",
    "follow_ups": [
     "What is the average Riverside Bank mortgage?",
@@ -942,13 +342,6 @@
      "open_accounts"
     ],
     "rows": [
-     [
-      "C0304828",
-      "Cameron White",
-      "ID",
-      599865.41,
-      3
-     ],
      [
       "C7836082",
       "Patricia Kelly",
@@ -1003,13 +396,6 @@
       "Kevin Page",
       "GU",
       587297.19,
-      2
-     ],
-     [
-      "C4046386",
-      "Joseph Hall",
-      "TN",
-      587171.73,
       2
      ],
      [
@@ -1116,499 +502,30 @@
       "MP",
       568374.01,
       2
+     ],
+     [
+      "C9348528",
+      "Diane Serrano",
+      "DC",
+      568131.52,
+      2
+     ],
+     [
+      "C3784067",
+      "Lisa Davis",
+      "PA",
+      567719.19,
+      3
      ]
     ],
     "row_count": 25
    },
-   "agent": {
-    "model": "claude-opus-5-5",
-    "calls": 2,
-    "usage": {
-     "input_tokens": 11040,
-     "output_tokens": 629
-    },
-    "steps": [
-     {
-      "sql": "SELECT a.customer_key, c.full_name, c.source_systems, a.source_account_id, a.balance, a.opened_on, a.is_open\nFROM account_360 a JOIN customer_360 c USING (customer_key)\nWHERE a.source_system='core_b' AND a.product_type='mortgage' AND a.balance>400000\nORDER BY a.balance DESC LIMIT 200",
-      "result": {
-       "columns": [
-        "customer_key",
-        "full_name",
-        "source_systems",
-        "source_account_id",
-        "balance",
-        "opened_on",
-        "is_open"
-       ],
-       "rows": [
-        [
-         "C0304828",
-         "Cameron White",
-         "core_b",
-         "cbde08bb-b448-4084-a9dd-3fc7ace28df7",
-         599865.41,
-         "2026-10-29",
-         true
-        ],
-        [
-         "C7836082",
-         "Patricia Kelly",
-         "core_b",
-         "60a328ce-9f17-4b69-bd22-46cfb7fe7e44",
-         599591.71,
-         "2026-08-13",
-         true
-        ],
-        [
-         "C7557381",
-         "Alexander Diaz",
-         "core_b",
-         "b6bf2a0f-9934-4c1c-a9ef-0a2ebba5a525",
-         597742.5,
-         "2024-10-27",
-         true
-        ],
-        [
-         "C7758673",
-         "Christopher Smith",
-         "core_a+core_b",
-         "e3b6b639-95be-4865-a294-e87522108237",
-         597739.82,
-         "2023-01-25",
-         true
-        ],
-        [
-         "C4096103",
-         "Catherine Michael",
-         "core_a+core_b",
-         "c8623419-6d8f-4be3-a324-54c7684600fc",
-         596003.81,
-         "2022-05-11",
-         true
-        ],
-        [
-         "C5309647",
-         "Alicia Lopez",
-         "core_a+core_b",
-         "34c8077e-500f-42a8-8584-fa5b51727b91",
-         595712.76,
-         "2015-09-05",
-         true
-        ],
-        [
-         "C4259219",
-         "James Mitchell",
-         "core_b",
-         "d5fd9ca3-a4e8-49fb-94c3-e580709c21ac",
-         595482.24,
-         "2015-08-03",
-         true
-        ],
-        [
-         "C0511543",
-         "Emily Jones",
-         "core_b",
-         "5adf6c47-e759-4092-9beb-7e0861c93c20",
-         594710.67,
-         "2014-06-10",
-         true
-        ],
-        [
-         "C2023930",
-         "Adam Hill",
-         "core_b",
-         "5bdbf25c-b411-4acd-ba55-0e2e039c0c6b",
-         594043.16,
-         "2020-12-19",
-         true
-        ],
-        [
-         "C1962717",
-         "Ashley Morris",
-         "core_b",
-         "ebe76971-99d4-4a98-b547-fb441f8b08a8",
-         593775.42,
-         "2024-07-01",
-         true
-        ],
-        [
-         "C8242676",
-         "Bill Buckley",
-         "core_a+core_b",
-         "f2c87448-61a5-475f-b93f-88a27fe0e9da",
-         593556.42,
-         "2023-05-12",
-         true
-        ],
-        [
-         "C6366096",
-         "Andrew Ayers",
-         "core_b",
-         "6b7df907-5233-4a2e-b634-f55d2174e944",
-         587592.23,
-         "2025-03-20",
-         true
-        ],
-        [
-         "C7479848",
-         "Kevin Page",
-         "core_b",
-         "3f69f477-ec51-474f-b7bf-10ad47899269",
-         587297.19,
-         "2026-01-06",
-         true
-        ],
-        [
-         "C4046386",
-         "Joseph Hall",
-         "core_b",
-         "bae4891c-93ff-466d-9589-f81f66419177",
-         587171.73,
-         "2026-10-07",
-         true
-        ],
-        [
-         "C3777398",
-         "Andrew Dixon",
-         "core_b",
-         "501c3a14-866e-477b-a572-3c7ccc68b7ba",
-         583225.37,
-         "2020-05-30",
-         true
-        ],
-        [
-         "C3253699",
-         "Samuel Baker",
-         "core_b",
-         "103e0ac7-021b-45bb-9217-ce53bddb4e0f",
-         579726.87,
-         "2026-07-05",
-         true
-        ],
-        [
-         "C0922410",
-         "Rebecca Williams",
-         "core_b",
-         "011efb51-192a-4bb2-8922-e8f5b104a53c",
-         579594.43,
-         "2020-01-05",
-         true
-        ],
-        [
-         "C7824679",
-         "Katherine Barnett",
-         "core_b",
-         "e8262603-793b-476b-b9d6-1507a4400f3b",
-         579548.24,
-         "2014-11-30",
-         true
-        ],
-        [
-         "C0362605",
-         "Daniel Gutierrez",
-         "core_a+core_b",
-         "1d406810-40bf-4ade-94e2-a26d605982a0",
-         579280.36,
-         "2024-09-07",
-         true
-        ],
-        [
-         "C4141518",
-         "Melissa Campbell",
-         "core_b",
-         "68b2a9b6-427d-4ec9-aeb4-4f0ac294b844",
-         578922.69,
-         "2017-07-15",
-         true
-        ],
-        [
-         "C7967931",
-         "James Garcia",
-         "core_b",
-         "2a635bf1-291d-471a-9974-f571a9a55198",
-         578909.71,
-         "2025-09-03",
-         true
-        ],
-        [
-         "C7405904",
-         "Emily Bruce",
-         "core_b",
-         "15036537-ebe0-450f-b907-eb1c1ef1360b",
-         577026.83,
-         "2024-12-26",
-         true
-        ],
-        [
-         "C1857581",
-         "Todd Middleton",
-         "core_b",
-         "f35d8ff9-adef-4a8e-91db-7e16e9b6f0d2",
-         575849.59,
-         "2023-04-16",
-         true
-        ],
-        [
-         "C2255662",
-         "Samuel Chavez",
-         "core_b",
-         "03b7b6f3-4c31-4e33-8bac-ca9205e31952",
-         575206.89,
-         "2019-05-10",
-         true
-        ],
-        [
-         "C2450252",
-         "Rebecca Mendoza",
-         "core_b",
-         "db054808-1722-4321-8c3f-ff8385f7e3e9",
-         574234.7,
-         "2013-02-12",
-         true
-        ],
-        [
-         "C7773566",
-         "Richard Dean",
-         "core_b",
-         "caab666f-18c6-4245-9c23-3895aaab488c",
-         573979.92,
-         "2025-01-16",
-         true
-        ],
-        [
-         "C4332256",
-         "Catherine Lynch",
-         "core_b",
-         "be4e996c-efdb-4438-9983-3b90f9579dfd",
-         572373.25,
-         "2023-06-18",
-         true
-        ],
-        [
-         "C4930916",
-         "Ashley Jordan",
-         "core_b",
-         "e26963ed-810f-4984-9057-32d43fa0cdd4",
-         572204.25,
-         "2012-06-01",
-         true
-        ],
-        [
-         "C9690418",
-         "Mark Bryant",
-         "core_b",
-         "9eb23b64-91ea-4a7a-9bd7-6e1a185f5d21",
-         571844.47,
-         "2019-04-01",
-         true
-        ],
-        [
-         "C4656439",
-         "Regina Martin",
-         "core_a+core_b",
-         "56ea8c0f-9789-42b9-94c4-fc61793f7c55",
-         570751.07,
-         "2025-11-05",
-         true
-        ],
-        [
-         "C1024910",
-         "Christopher Mclaughlin",
-         "core_a+core_b",
-         "a9978019-1360-4b80-96ac-7381ac6b6a12",
-         568439.53,
-         "2019-07-19",
-         true
-        ],
-        [
-         "C8260659",
-         "Vincent Jackson",
-         "core_b",
-         "a1778ed4-5c63-4fa2-9f89-b7b1dc537ed6",
-         568374.01,
-         "2021-09-29",
-         true
-        ],
-        [
-         "C9348528",
-         "Diane Serrano",
-         "core_b",
-         "784e86ee-117b-4421-bb41-d33547cda538",
-         568131.52,
-         "2026-03-30",
-         true
-        ],
-        [
-         "C3784067",
-         "Lisa Davis",
-         "core_b",
-         "c0112697-6cf0-4ce8-a934-e962c896e1ae",
-         567719.19,
-         "2026-08-19",
-         true
-        ],
-        [
-         "C1133773",
-         "Diane Walsh",
-         "core_b",
-         "d01ade83-b303-4335-bad8-28a0465cac8c",
-         567630.34,
-         "2022-06-16",
-         true
-        ],
-        [
-         "C9303328",
-         "Monica Hughes",
-         "core_b",
-         "eacaed23-8050-4c9c-a7c6-2c0cc2263c9e",
-         567525.98,
-         "2024-08-28",
-         true
-        ],
-        [
-         "C0612369",
-         "Rebecca Miller",
-         "core_b",
-         "3f419833-8e79-4d3a-856a-3cab0972a4cc",
-         566717.26,
-         "2026-03-04",
-         true
-        ],
-        [
-         "C4575310",
-         "Jennifer Sims",
-         "core_b",
-         "43e7a77f-aaf0-4f14-93a1-76d2ae0eec60",
-         566496.4,
-         "2024-04-22",
-         true
-        ],
-        [
-         "C5686592",
-         "Susan York",
-         "core_a+core_b",
-         "13c2abd4-165d-487f-bcc5-39a491ea96f4",
-         566264.96,
-         "2018-02-14",
-         true
-        ],
-        [
-         "C8281685",
-         "Katherine Mueller",
-         "core_b",
-         "1c156132-e360-4c13-8afb-2efdfc814d2c",
-         565634.67,
-         "2024-08-27",
-         true
-        ],
-        [
-         "C6190918",
-         "Andrew Carroll",
-         "core_b",
-         "ee679e5a-44cc-45c4-83a6-dd81b8116925",
-         564113.34,
-         "2024-06-08",
-         true
-        ],
-        [
-         "C2286137",
-         "Tracy Morrow",
-         "core_b",
-         "d63bd55a-540a-4d34-809c-5502d746fe9d",
-         563451.04,
-         "2019-11-08",
-         false
-        ],
-        [
-         "C2322875",
-         "Kevin Parks",
-         "core_b",
-         "e72e6882-60ea-47ab-989e-f2657fdd0e65",
-         563442.41,
-         "2019-07-27",
-         true
-        ],
-        [
-         "C1685599",
-         "Nicole Bryant",
-         "core_b",
-         "ff322223-50f3-4bf3-a02a-f1762b2e5c3d",
-         561393.03,
-         "2011-12-02",
-         true
-        ],
-        [
-         "C7701243",
-         "Timothy Jenkins",
-         "core_a+core_b",
-         "2497c09f-b71c-4766-ac19-fe99937197bf",
-         560448.53,
-         "2020-06-27",
-         true
-        ],
-        [
-         "C9812708",
-         "Shawn Robertson",
-         "core_b",
-         "f9852662-781c-47e8-b55e-c335728842c7",
-         560321.68,
-         "2012-03-27",
-         true
-        ],
-        [
-         "C1462854",
-         "Charles Matthews",
-         "core_b",
-         "42f2d6b0-80aa-4d49-8dfd-67b5c5532d7f",
-         559605.4,
-         "2026-04-12",
-         true
-        ],
-        [
-         "C7092688",
-         "Rebecca Lee",
-         "core_b",
-         "2c07f493-0ef5-4ee5-bb4a-770acf3e7f75",
-         558404.92,
-         "2026-10-13",
-         true
-        ],
-        [
-         "C7568111",
-         "Jennifer Silva",
-         "core_b",
-         "d0d775f0-8de9-4b97-b59d-a77116f7c028",
-         557643.93,
-         "2021-11-05",
-         true
-        ],
-        [
-         "C9345445",
-         "Monica Tate",
-         "core_b",
-         "f64addeb-b532-4788-974c-718da737bd9b",
-         555921.66,
-         "2015-11-21",
-         true
-        ]
-       ],
-       "row_count": 177
-      },
-      "error": null
-     }
-    ],
-    "explanation": "I found **177 Riverside Bank (Core B) mortgage accounts with a balance above $400,000**. The largest belong to Cameron White ($599,865), Patricia Kelly ($599,592) and Alexander Diaz ($597,743). Many of these customers also bank with Harbor Bank, for example Christopher Smith and Alicia Lopez.\n\n- I counted every Riverside mortgage over $400K, including closed ones, such as Tracy Morrow's $563,451 loan. To match the customer `loan_balance` figures (G-06), you'd need to add `is_open = true`. I also counted accounts, not people, so someone with two such mortgages would appear twice.\n- Not every account was opened before the acquisition. Some were opened in 2026, such as Cameron White's on 2026-10-29, so they may be new lending rather than mortgages Riverside brought over. Customers still waiting in the review queue (ER-05, G-20) appear as Riverside-only even if they also bank with Harbor.",
-    "follow_ups": [
-     "Only open mortgages opened before the acquisition?",
-     "How many of these customers also hold Harbor Bank deposits?",
-     "What's the total Riverside mortgage balance above $400K?"
-    ]
-   }
+   "agent": null
   },
   {
    "id": "review-queue-priority",
    "question": "Which possible duplicate customers should someone check first?",
-   "fingerprint": "5cc09bf6851bbc76",
+   "fingerprint": "8ca9b34ef612f3e6",
    "sql": "SELECT priority, core_a_name, core_b_name, dob, confidence, core_b_ssn_missing,\n       phone_match, postal_code_match, combined_balance\nFROM review_queue\nORDER BY priority\nLIMIT 25",
    "follow_ups": [
     "Why were those pairs not merged automatically?",
@@ -1851,288 +768,12 @@
     ],
     "row_count": 20
    },
-   "agent": {
-    "model": "claude-opus-5-5",
-    "calls": 2,
-    "usage": {
-     "input_tokens": 8755,
-     "output_tokens": 643
-    },
-    "steps": [
-     {
-      "sql": "SELECT priority, core_a_name, core_b_name, dob, confidence, name_similarity, core_b_ssn_missing, phone_match, postal_code_match, combined_balance FROM review_queue ORDER BY priority LIMIT 20",
-      "result": {
-       "columns": [
-        "priority",
-        "core_a_name",
-        "core_b_name",
-        "dob",
-        "confidence",
-        "name_similarity",
-        "core_b_ssn_missing",
-        "phone_match",
-        "postal_code_match",
-        "combined_balance"
-       ],
-       "rows": [
-        [
-         1,
-         "Joseph Robinson",
-         "Joseph Guerra",
-         "1941-09-01",
-         0.7026,
-         0.632,
-         true,
-         true,
-         true,
-         1240211.19
-        ],
-        [
-         2,
-         "Debbie Carter",
-         "Debbie Carter",
-         "1967-07-21",
-         0.7,
-         1.0,
-         true,
-         true,
-         false,
-         1143037.26
-        ],
-        [
-         3,
-         "Anthony Harris",
-         "Anthony Harris",
-         "2004-07-14",
-         0.7,
-         1.0,
-         true,
-         true,
-         false,
-         1070640.13
-        ],
-        [
-         4,
-         "Michael Anderson",
-         "Michael Lee",
-         "1950-06-13",
-         0.7611,
-         0.778,
-         true,
-         true,
-         true,
-         739635.73
-        ],
-        [
-         5,
-         "Jessica Kim",
-         "Jessica Kim",
-         "1943-04-30",
-         0.7,
-         1.0,
-         true,
-         true,
-         false,
-         705373.98
-        ],
-        [
-         6,
-         "Jennifer Wise",
-         "Jennifer Wise",
-         "1953-12-01",
-         0.7,
-         1.0,
-         true,
-         true,
-         false,
-         624387.85
-        ],
-        [
-         7,
-         "Craig Carpenter",
-         "Craig Reynolds",
-         "1954-08-18",
-         0.6983,
-         0.621,
-         true,
-         true,
-         true,
-         508815.98
-        ],
-        [
-         8,
-         "Jeffery Clark",
-         "Jeffery Romero",
-         "1966-07-17",
-         0.73,
-         0.7,
-         true,
-         true,
-         true,
-         478722.52
-        ],
-        [
-         9,
-         "Margaret Pittman",
-         "Margaret Pittman",
-         "2004-08-23",
-         0.7,
-         1.0,
-         true,
-         true,
-         false,
-         418048.01
-        ],
-        [
-         10,
-         "Jill Cole",
-         "Jill Cole",
-         "1942-06-17",
-         0.7,
-         1.0,
-         true,
-         true,
-         false,
-         388084.71
-        ],
-        [
-         11,
-         "Christopher Hart",
-         "Christopher Hart",
-         "1963-11-09",
-         0.7,
-         1.0,
-         true,
-         true,
-         false,
-         385128.42
-        ],
-        [
-         12,
-         "Jonathan Wilson",
-         "Jonathan Bell",
-         "1962-07-25",
-         0.7548,
-         0.762,
-         true,
-         true,
-         true,
-         323314.85
-        ],
-        [
-         13,
-         "Frank Wallace",
-         "Frank Davis",
-         "1950-02-05",
-         0.7,
-         0.625,
-         true,
-         true,
-         true,
-         299116.8
-        ],
-        [
-         14,
-         "Samuel Robinson",
-         "Samuel Johnson",
-         "1965-06-03",
-         0.781,
-         0.828,
-         true,
-         true,
-         true,
-         232078.74
-        ],
-        [
-         15,
-         "Andrew Stevens",
-         "Andrew Gardner",
-         "1965-03-12",
-         0.69,
-         0.6,
-         true,
-         true,
-         true,
-         209220.45
-        ],
-        [
-         16,
-         "Bradley Gibson",
-         "Bradley Gibson",
-         "2001-06-24",
-         0.7,
-         1.0,
-         true,
-         true,
-         false,
-         182801.86
-        ],
-        [
-         17,
-         "Elizabeth Delgado",
-         "Elizabeth Delgado",
-         "1975-11-25",
-         0.7,
-         1.0,
-         true,
-         true,
-         false,
-         158970.34
-        ],
-        [
-         18,
-         "Margaret Everett",
-         "Margaret Mathews",
-         "1953-05-23",
-         0.7167,
-         0.667,
-         true,
-         true,
-         true,
-         157971.23
-        ],
-        [
-         19,
-         "Joseph Thomas",
-         "Joseph Thomas",
-         "1951-06-27",
-         0.7,
-         1.0,
-         true,
-         true,
-         false,
-         120206.95
-        ],
-        [
-         20,
-         "Margaret Hobbs",
-         "Margaret Burnett",
-         "1977-04-22",
-         0.7409,
-         0.727,
-         true,
-         true,
-         true,
-         22548.46
-        ]
-       ],
-       "row_count": 20
-      },
-      "error": null
-     }
-    ],
-    "explanation": "Start with the top of the review queue, which is sorted by how much money is at stake. Priority 1 is Joseph Robinson at Harbor Bank (Core A) and Joseph Guerra at Riverside Bank (Core B), with $1.24M combined. Next are the two Debbie Carter records ($1.14M) and the two Anthony Harris records ($1.07M). All the pairs shown score between 0.69 and 0.78 on the match score, so none of them were merged automatically.\n\n- Every pair shown is missing the Social Security number (SSN) last 4 digits on the Riverside side, so the check can only score it at half weight. Same-name pairs like Carter, Harris and Kim match on name, date of birth and phone but have different postal codes. Pairs with different surnames, like Robinson/Guerra, match on phone and postal code, which could mean a name change after marriage or two people in one household. A reviewer should confirm these before merging (ER-04, ER-05).\n- Until a reviewer confirms a pair, each side stays a separate customer, so balances and product counts are split across two records. A confirmed pair merges at tier 3, and a rejected pair never merges (G-20, ER-08). I only pulled the top 20, so the queue may be longer.",
-    "follow_ups": [
-     "How many pairs are in the review queue in total?",
-     "Which queue pairs match on name, phone and postal code?",
-     "What accounts does the Joseph Robinson / Joseph Guerra pair hold?"
-    ]
-   }
+   "agent": null
   },
   {
    "id": "credit-debit-mix",
    "question": "Is more money coming in or going out, and does it differ between the two banks?",
-   "fingerprint": "02a97c1493a974a4",
+   "fingerprint": "08936ccf4792418a",
    "sql": "SELECT source_system, direction, count(*) AS transactions,\n       round(100.0 * count(*) / sum(count(*)) OVER (PARTITION BY source_system), 1) AS pct,\n       round(sum(amount), 2) AS total_amount\nFROM transactions\nGROUP BY 1, 2\nORDER BY 1, 2",
    "follow_ups": [
     "How did last quarter compare?",
@@ -2151,87 +792,35 @@
      [
       "core_a",
       "credit",
-      6073,
-      25.0,
-      11903389.62
+      6084,
+      24.7,
+      11828401.38
      ],
      [
       "core_a",
       "debit",
-      18174,
-      75.0,
-      -15991430.93
+      18502,
+      75.3,
+      -16298014.52
      ],
      [
       "core_b",
       "credit",
-      6804,
-      26.7,
-      13213964.16
+      6926,
+      26.9,
+      13489008.51
      ],
      [
       "core_b",
       "debit",
-      18641,
-      73.3,
-      -14402744.56
+      18814,
+      73.1,
+      -14721702.55
      ]
     ],
     "row_count": 4
    },
-   "agent": {
-    "model": "claude-opus-5-5",
-    "calls": 2,
-    "usage": {
-     "input_tokens": 7817,
-     "output_tokens": 553
-    },
-    "steps": [
-     {
-      "sql": "SELECT source_system, COUNT(*) n, SUM(CASE WHEN amount>0 THEN amount ELSE 0 END) inflow, -SUM(CASE WHEN amount<0 THEN amount ELSE 0 END) outflow, SUM(amount) net FROM transactions GROUP BY ROLLUP(source_system) ORDER BY source_system",
-      "result": {
-       "columns": [
-        "source_system",
-        "n",
-        "inflow",
-        "outflow",
-        "net"
-       ],
-       "rows": [
-        [
-         "core_a",
-         24247,
-         11903389.619999979,
-         15991430.929999912,
-         -4088041.310000002
-        ],
-        [
-         "core_b",
-         25445,
-         13213964.159999983,
-         14402744.559999982,
-         -1188780.4000000106
-        ],
-        [
-         null,
-         49692,
-         25117353.779999953,
-         30394175.490000024,
-         -5276821.710000039
-        ]
-       ],
-       "row_count": 3
-      },
-      "error": null
-     }
-    ],
-    "explanation": "More money is going out than coming in. Across both banks, $30.39M left and $25.12M came in over the last 365 days, a net outflow of about $5.28M across 49,692 transactions.\n\nThe two banks differ a lot:\n- **Harbor Bank (Core A):** $11.90M in and $15.99M out, a net outflow of about $4.09M.\n- **Riverside Bank (Core B):** $13.21M in and $14.40M out, a net outflow of about $1.19M.\n\nHarbor accounts for roughly three-quarters of the total net outflow, even though both banks had a similar number of transactions (24,247 at Harbor vs 25,445 at Riverside).\n\n- These totals include all transactions, including loan payments and transfers between a customer's own accounts. So \"out\" doesn't necessarily mean money left the bank.\n- The transaction feed only goes back to 2025-10-31, 365 days before the 2026-10-31 as-of date. Older history isn't available.",
-    "follow_ups": [
-     "Which product types drive Harbor's net outflow?",
-     "How has net flow trended month by month for each bank?",
-     "Which customers have the largest net outflows?"
-    ]
-   }
+   "agent": null
   }
  ]
 }

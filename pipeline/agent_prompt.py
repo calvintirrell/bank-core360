@@ -50,6 +50,8 @@ COLUMN_TYPES = {
         "txn_count_90d": "integer",
         "checking_last_txn_ts": "timestamp",
         "checking_dormant_180d": "boolean",
+        "checking_all_dormant_180d": "boolean",
+        "dormant_checking_last_txn_ts": "timestamp",
     },
     "account_360": {
         "customer_key": "text",
@@ -143,14 +145,16 @@ def build_prompt() -> str:
         "",
         "Rules referenced by lineage (cite by id when relevant):",
     ]
-    for rid in ("ER-03", "ER-04", "ER-05", "ER-08", "G-01", "G-02", "G-05", "G-06", "G-10", "G-11", "G-20", "S-10", "S-11"):
+    for rid in ("ER-03", "ER-04", "ER-05", "ER-08", "G-01", "G-02", "G-05", "G-06", "G-10", "G-11", "G-12", "G-13", "G-20", "S-10", "S-11"):
         lines.append(f"  {rid}: {LINEAGE['rules'][rid]}")
     lines += [
         "",
         (
             "Notes: source_systems = 'core_a+core_b' means the person was found in both cores by entity resolution. "
             "customer_360.checking_dormant_180d is true if ANY open checking account is dormant (rule G-11), so a customer can also "
-            "show recent activity on another checking account; use account_360 for per-account detail. "
+            "show recent activity on another checking account (checking_last_txn_ts is the max over all of them). When you show when "
+            "a quiet account was last used, use dormant_checking_last_txn_ts (G-13), never checking_last_txn_ts; "
+            "checking_all_dormant_180d (G-12) is the stricter 'every checking account is quiet'. Use account_360 for per-account detail. "
             "Core A stores no email, so email is null for Core A-only customers. Balances are dollars. All data is synthetic."
         ),
     ]
