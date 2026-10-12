@@ -1,25 +1,122 @@
 /** Read-only SQL guard and the example queries shown in the console. Pure functions, unit-tested. */
 
-const FORBIDDEN = /\b(attach|copy|export|import|install|load|pragma|create|insert|update|delete|drop|alter|truncate|call|set|reset|vacuum|checkpoint)\b/i
-
 export class SqlGuardError extends Error {}
 
-/** Returns the trimmed statement if it is a single read-only query, otherwise throws. */
+/** Base tables the page registers in DuckDB; `_v<n>` / `_latest` suffixes are the fixed as-of views. */
+export const BASE_TABLES = ['customer_360', 'account_360', 'transactions', 'review_queue'] as const
+const KNOWN_TABLE = new RegExp(`^(${BASE_TABLES.join('|')})(_v\\d+|_latest)?$`, 'i')
+/** Table-valued functions that only generate rows and read nothing. */
+const SAFE_TABLE_FUNCTIONS = /^(range|generate_series|unnest)$/i
+
+const FIRST_WORDS = ['select', 'with', 'describe', 'show', 'explain', 'summarize', 'from', 'values']
+const FORBIDDEN =
+  /\b(attach|detach|copy|export|import|install|load|pragma|create|insert|update|delete|drop|alter|truncate|call|set|reset|vacuum|checkpoint|force|begin|commit|rollback|use|comment)\b/i
+/** Functions that read files, URLs, settings or the catalog: nothing may leave the page's own tables. */
+const FORBIDDEN_FUNCTIONS = /\b(read_\w+|\w+_scan|glob|sniff_csv|pragma_\w+|duckdb_\w+|getenv|current_setting|st_read)\s*\(/i
+/** A string literal that names a file or URL (DuckDB would open it). */
+const FILE_OR_URL = /^\s*(\w+:\/\/|\/|~\/|\.{1,2}\/|[a-z]:\\)|\.(parquet|csv|tsv|json|jsonl|ndjson|txt|db|duckdb|xlsx|zst|gz)\s*$/i
+
+export type Scan = { clean: string; masked: string; literals: string[] }
+
+/**
+ * One pass over the text. Comments are removed; string literals and quoted identifiers are kept
+ * in `clean` (what runs) but replaced by '?' / "?" in `masked` (what is checked), so a keyword or
+ * semicolon inside a literal can neither trip the guard nor hide from it. Handles '' and ""
+ * escapes and $tag$ … $tag$ strings.
+ */
+export function scan(sql: string): Scan {
+  let clean = ''
+  let masked = ''
+  const literals: string[] = []
+  const n = sql.length
+  let i = 0
+  while (i < n) {
+    const ch = sql[i]
+    const next = sql[i + 1]
+    if (ch === '-' && next === '-') {
+      while (i < n && sql[i] !== '\n') i++
+      clean += ' '
+      masked += ' '
+      continue
+    }
+    if (ch === '/' && next === '*') {
+      const end = sql.indexOf('*/', i + 2)
+      i = end === -1 ? n : end + 2
+      clean += ' '
+      masked += ' '
+      continue
+    }
+    if (ch === "'" || ch === '"') {
+      let j = i + 1
+      let body = ''
+      while (j < n) {
+        if (sql[j] === ch) {
+          if (sql[j + 1] === ch) {
+            body += ch
+            j += 2
+            continue
+          }
+          break
+        }
+        body += sql[j]
+        j++
+      }
+      if (j >= n) throw new SqlGuardError('Unterminated quote.')
+      clean += sql.slice(i, j + 1)
+      masked += `${ch}?${ch}`
+      if (ch === "'") literals.push(body)
+      i = j + 1
+      continue
+    }
+    if (ch === '$') {
+      const m = /^\$([A-Za-z_]\w*)?\$/.exec(sql.slice(i))
+      if (m) {
+        const tag = m[0]
+        const end = sql.indexOf(tag, i + tag.length)
+        if (end === -1) throw new SqlGuardError('Unterminated quote.')
+        literals.push(sql.slice(i + tag.length, end))
+        clean += sql.slice(i, end + tag.length)
+        masked += "'?'"
+        i = end + tag.length
+        continue
+      }
+    }
+    clean += ch
+    masked += ch
+    i++
+  }
+  return { clean, masked, literals }
+}
+
+/** Returns the statement to run (comments removed, trailing semicolon dropped) if it is a single read-only query over the page's own tables; otherwise throws. */
 export function assertReadOnly(sql: string): string {
-  const stripped = sql
-    .replace(/\/\*[\s\S]*?\*\//g, ' ')
-    .replace(/--[^\n]*/g, ' ')
-    .trim()
-    .replace(/;+\s*$/, '')
-  if (!stripped) throw new SqlGuardError('Enter a query.')
-  if (stripped.includes(';')) throw new SqlGuardError('One statement at a time.')
-  const first = stripped.split(/\s+/)[0].toLowerCase()
-  if (!['select', 'with', 'describe', 'show', 'explain', 'summarize', 'from'].includes(first)) {
+  const { clean, masked, literals } = scan(sql)
+  const text = clean.trim().replace(/;+\s*$/, '')
+  const m = masked.trim().replace(/;+\s*$/, '')
+  if (!m) throw new SqlGuardError('Enter a query.')
+  if (m.includes(';')) throw new SqlGuardError('One statement at a time.')
+  const first = m.split(/\s+/)[0].replace(/^\(+/, '').toLowerCase()
+  if (!FIRST_WORDS.includes(first)) {
     throw new SqlGuardError(`Only read-only queries are allowed (got "${first}").`)
   }
-  const bad = stripped.match(FORBIDDEN)
+  const bad = m.match(FORBIDDEN)
   if (bad) throw new SqlGuardError(`"${bad[0]}" is not allowed in the console.`)
-  return stripped
+  const fn = m.match(FORBIDDEN_FUNCTIONS)
+  if (fn) throw new SqlGuardError(`"${fn[1]}()" reads outside the page's tables and is not allowed.`)
+  for (const lit of literals) {
+    if (FILE_OR_URL.test(lit)) throw new SqlGuardError(`File paths and URLs are not allowed ("${lit.slice(0, 40)}").`)
+  }
+  if (/\b(from|join)\s+(lateral\s+)?['"]\?['"]/i.test(m)) throw new SqlGuardError('Querying a file or URL is not allowed.')
+  // Table allowlist: every FROM / JOIN target is a page table, a CTE defined in this query, or a
+  // row generator. A name followed by ')' is skipped (EXTRACT(year FROM col), TRIM(... FROM col)).
+  const ctes = new Set([...m.matchAll(/\b([a-z_]\w*)\s+as\s*\(/gi)].map((x) => x[1].toLowerCase()))
+  for (const [, , name] of m.matchAll(/\b(from|join)\s+(?:lateral\s+)?([a-z_][\w.]*)(?![\w.])(?!\s*\))/gi)) {
+    const lower = name.toLowerCase()
+    if (lower === 'lateral') continue // JOIN LATERAL (subquery): the regex may bind the keyword when a '(' follows
+    if (KNOWN_TABLE.test(lower) || ctes.has(lower) || SAFE_TABLE_FUNCTIONS.test(lower)) continue
+    throw new SqlGuardError(`Unknown table "${name}". Available: ${BASE_TABLES.join(', ')} (add _v0 or _latest for a fixed as-of).`)
+  }
+  return text
 }
 
 export type Example = { label: string; sql: string }

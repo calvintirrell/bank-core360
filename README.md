@@ -71,7 +71,7 @@ It cannot answer anything outside those tables, and it will say so. Every answer
 ### What happens behind a question
 
 1. Your question goes to Claude with a description of the four tables generated from the lineage file.
-2. Claude writes one SQL query and calls a `run_sql` tool. The query runs in DuckDB-WASM in your browser against the Parquet files on this site; nothing leaves the page except the question and the result rows sent back to the model.
+2. Claude writes one SQL query and calls a `run_sql` tool. The query runs in DuckDB-WASM in your browser against the Parquet files on this site. A guard accepts only a single read-only statement over the page's own tables and refuses file paths, URLs and reading functions, so nothing leaves the page except the question and the result rows sent back to the model.
 3. Claude reads the rows and writes the answer, with caveats that cite the rules it relied on, and suggests follow-up questions.
 4. The page shows the answer first, and the query and rows under "Show how this was worked out".
 
