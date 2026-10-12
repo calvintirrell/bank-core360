@@ -1,5 +1,5 @@
 import type { Changes, Manifest, MatchReport } from '../lib/lakehouse'
-import { useAsOf } from '../lib/AsOfContext'
+import { useAsOf, versionIds } from '../lib/AsOfContext'
 import { useBankMode } from '../lib/ModeContext'
 import { Stat } from './Section'
 import { Term } from './Term'
@@ -39,7 +39,7 @@ export function Hero({ manifest, report, changes, latest }: { manifest: Manifest
           <span className="text-slate-600">{bank ? 'See the bank as of' : 'As of'}</span>
           <div className="flex items-center gap-1 rounded-full border border-slate-200 bg-white p-0.5">
             {latest.versions.map((v, i) => {
-              const id = i === latest.versions!.length - 1 ? 'latest' : (`v${i}` as const)
+              const id = versionIds(latest.versions)[i]
               const on = version === id
               return (
                 <button key={v.as_of} type="button" onClick={() => setVersion(id)} aria-pressed={on} className={`rounded-full px-3 py-1 text-xs font-medium ${on ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'}`}>
@@ -89,7 +89,7 @@ export function Hero({ manifest, report, changes, latest }: { manifest: Manifest
             <li><b>{changes.address_changes}</b> customers changed address.</li>
             <li>{changes.transactions_in_new_month.toLocaleString()} transactions in the new month; deposits {money(changes.deposits_before)} → <b>{money(changes.deposits_after)}</b>.</li>
           </ul>
-          <button type="button" onClick={() => setVersion('v0')} className="mt-2 text-xs text-violet-800 underline">See the page as it was on {fmtDate(changes.from_as_of)}</button>
+          <button type="button" onClick={() => setVersion(versionIds(latest?.versions).at(-2) ?? 'v0')} className="mt-2 text-xs text-violet-800 underline">See the page as it was on {fmtDate(changes.from_as_of)}</button>
         </div>
       )}
       {version !== 'latest' && (

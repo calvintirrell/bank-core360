@@ -1,5 +1,7 @@
 import * as duckdb from '@duckdb/duckdb-wasm'
 import { Type, type Field } from 'apache-arrow'
+import { latestOnlyQueue } from './serial'
+import { versionDirs, type ManifestVersion } from './versions'
 
 export const TABLES = ['customer_360', 'account_360', 'transactions', 'review_queue'] as const
 export type TableName = (typeof TABLES)[number]
@@ -15,15 +17,21 @@ let readyPromise: Promise<void> | null = null
 export function getDb(): Promise<duckdb.AsyncDuckDB> {
   if (!dbPromise) {
     dbPromise = (async () => {
-      const bundle = await duckdb.selectBundle(duckdb.getJsDelivrBundles())
-      const workerUrl = URL.createObjectURL(
-        new Blob([`importScripts("${bundle.mainWorker}");`], { type: 'text/javascript' }),
-      )
-      const worker = new Worker(workerUrl)
-      const db = new duckdb.AsyncDuckDB(new duckdb.ConsoleLogger(duckdb.LogLevel.WARNING), worker)
-      await db.instantiate(bundle.mainModule, bundle.pthreadWorker)
-      URL.revokeObjectURL(workerUrl)
-      return db
+      try {
+        const bundle = await duckdb.selectBundle(duckdb.getJsDelivrBundles())
+        const workerUrl = URL.createObjectURL(
+          new Blob([`importScripts("${bundle.mainWorker}");`], { type: 'text/javascript' }),
+        )
+        const worker = new Worker(workerUrl)
+        const db = new duckdb.AsyncDuckDB(new duckdb.ConsoleLogger(duckdb.LogLevel.WARNING), worker)
+        await db.instantiate(bundle.mainModule, bundle.pthreadWorker)
+        URL.revokeObjectURL(workerUrl)
+        return db
+      } catch (e) {
+        dbPromise = null // let a reload-free retry try again
+        const why = e instanceof Error ? e.message : String(e)
+        throw new Error(`The in-browser query engine could not start (${why}). Its files load from cdn.jsdelivr.net; a network that blocks CDNs would cause this.`)
+      }
     })()
   }
   return dbPromise
@@ -34,24 +42,32 @@ export function dataUrl(file: string, dir = ''): string {
   return new URL(`${import.meta.env.BASE_URL}data/${dir}${file}`, window.location.origin).href
 }
 
-/** Versions to expose: '' is the latest export, 'v0/' the first batch. Set by the app before ready(). */
-const VERSION_DIRS: Record<string, string> = { latest: '', v0: 'v0/' }
+/** Versions to expose, read from the latest manifest at startup: '' is the latest export, 'v0/' the first batch. */
+let versionDirsLoaded: Record<string, string> = { latest: '' }
 let selected = 'latest'
+
+async function loadVersionDirs(): Promise<Record<string, string>> {
+  const r = await fetch(dataUrl('manifest.json'))
+  if (!r.ok) throw new Error(`manifest.json: HTTP ${r.status}`)
+  const m = (await r.json()) as { versions?: ManifestVersion[] }
+  return versionDirs(m.versions)
+}
 
 /** Registers every version's Parquet files and creates the views. `customer_360` etc. follow the
  *  selected version; `customer_360_v0` / `customer_360_latest` are always available for comparison. */
 export function ready(): Promise<void> {
   if (!readyPromise) {
     readyPromise = (async () => {
-      const db = await getDb()
-      for (const [v, dir] of Object.entries(VERSION_DIRS)) {
+      const [db, dirs] = await Promise.all([getDb(), loadVersionDirs()])
+      versionDirsLoaded = dirs
+      for (const [v, dir] of Object.entries(dirs)) {
         for (const t of TABLES) {
           await db.registerFileURL(`${t}_${v}.parquet`, dataUrl(`${t}.parquet`, dir), duckdb.DuckDBDataProtocol.HTTP, false)
         }
       }
       const conn = await db.connect()
       try {
-        for (const v of Object.keys(VERSION_DIRS)) {
+        for (const v of Object.keys(dirs)) {
           for (const t of TABLES) {
             await conn.query(`CREATE OR REPLACE VIEW ${t}_${v} AS SELECT * FROM read_parquet('${t}_${v}.parquet')`)
           }
@@ -71,17 +87,29 @@ async function pointViews(conn: duckdb.AsyncDuckDBConnection, v: string): Promis
   }
 }
 
-/** Switches the unsuffixed views to another version. Resolves once the views are re-pointed. */
-export async function selectVersion(v: string): Promise<void> {
+const switchQueue = latestOnlyQueue<string>()
+
+/** Switches the unsuffixed views to another version. Switches run one at a time and a switch
+ *  that was superseded before it started is skipped, so rapid clicks never leave the four views
+ *  pointing at different versions. Resolves once the views are re-pointed (or skipped). */
+export function selectVersion(v: string): Promise<void> {
   selected = v
-  await ready()
-  const db = await getDb()
-  const conn = await db.connect()
-  try {
-    await pointViews(conn, v)
-  } finally {
-    await conn.close()
-  }
+  return switchQueue(v, async () => {
+    await ready()
+    if (!(v in versionDirsLoaded)) throw new Error(`Unknown version "${v}"; this build has ${Object.keys(versionDirsLoaded).join(', ')}.`)
+    const db = await getDb()
+    const conn = await db.connect()
+    try {
+      await pointViews(conn, v)
+    } finally {
+      await conn.close()
+    }
+  })
+}
+
+/** The version ids this build exposes (after ready()). */
+export function availableVersions(): string[] {
+  return Object.keys(versionDirsLoaded)
 }
 
 function kindOf(f: Field): ColumnKind {

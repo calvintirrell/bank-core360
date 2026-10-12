@@ -1,11 +1,7 @@
 import { createContext, useContext, useState, type ReactNode } from 'react'
+import { versionDir, type VersionId } from './versions'
 
-/** Which exported version the page reads: 'latest' (EXPORT/) or an earlier 'vN' (EXPORT/vN/). */
-export type VersionId = 'latest' | `v${number}`
-
-export function versionDir(v: VersionId): string {
-  return v === 'latest' ? '' : `${v}/`
-}
+export { versionDir, versionIds, type VersionId } from './versions'
 
 export function resolveVersion(search: string): VersionId {
   const q = new URLSearchParams(search).get('asof')
