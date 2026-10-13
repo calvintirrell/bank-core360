@@ -19,9 +19,12 @@ function products(r: Record<string, unknown>): string {
   return `Has ${list.slice(0, -1).join(', ')} and ${list[list.length - 1]}`
 }
 
-function matchText(r: Record<string, unknown>): string | null {
+/** How this person's two records were joined, in the words of the matching rules (ER-03, ER-04, ER-08). */
+export function matchText(r: Record<string, unknown>): string | null {
   if (r.source_systems !== 'core_a+core_b') return null
-  if (Number(r.match_tier) === 1) return 'Matched exactly across both banks'
+  const tier = Number(r.match_tier)
+  if (tier === 1) return 'Matched exactly across both banks'
+  if (tier === 3) return 'Confirmed as the same person by a reviewer'
   const c = Number(r.match_confidence)
   return `Matched by similarity, ${Math.round(c * 100)}% confident`
 }
