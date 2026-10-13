@@ -164,7 +164,7 @@ What I would validate first: the included-row block sizes, whether per-instituti
 
 ## How it was built
 
-I built this in five days with Claude Code as the build partner. The honest split:
+I built this in five days with Claude Code as the build partner. As with my other projects, I work from the product manager's seat and Claude is the engineer and technical thought partner. We discuss the architecture and the stack, weigh the pros and cons of each decision from the business side and the technical side, and research and validate ideas before anything is planned or built. Then the work is tested against the plan's milestones before moving on. The honest split:
 
 - **Decided by me.** The problem (two cores after an acquisition) and the three things the page had to prove. The two views, one for the bank and one for the data team. That the matcher grades itself against ground truth and holds every doubtful pair for a person rather than guessing. The caps and billing rails a public AI demo needs before the link goes out. Which layout and wording to ship, chosen from side-by-side options. And the call to keep the generated tables in the repo so the exhibit is self-contained.
 - **Drafted by the model, reviewed by me.** Most of the code, the tests and the first pass of every document. I read the output the way a product manager reads a spec: does the claim hold, how could it fail, and what does a visitor see when it does.
