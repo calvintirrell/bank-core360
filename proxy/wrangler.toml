@@ -11,7 +11,7 @@ MAX_TOKENS_CAP = "2048"
 # question and 2, 3, ... on its follow-ups, so only call 1 is metered; a question may use up to
 # CALLS_PER_QUESTION API calls. (The browser also sends an x-demo-question id for its own tracing;
 # the Worker does not read it.)
-DAILY_CAP = "8"
+DAILY_CAP = "24"
 MONTHLY_CAP = "240"
 CALLS_PER_QUESTION = "5"
 # The only system prompts accepted are the ones the site serves (every as-of version's agent_prompt.md).
