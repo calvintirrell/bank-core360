@@ -42,12 +42,12 @@ Everything below is on one page at the live link. Nothing to install, no account
 |---|---|---|---|
 | View switch | Top right | Chooses how much detail you see. "I run the bank" hides queries and raw data; "I build the data" shows everything. | Click either button. The choice is remembered. `?mode=bank` or `?mode=tech` on the link opens a view directly. |
 | Show me around | Top right, and a banner on first visit | A 60-second tour in five stops: the problem, asking, the answer, one person not two records, who should check what. | Click it. Next, Back, Skip. A saved answer is shown at stop three at no cost. |
-| As-of switch | Under the headline | Shows the whole page as of Sep 30, 2026 (the first load) or Oct 31, 2026 (one month later). Every table, answer and check follows the date. | Click a date. "What changed" summarises the month; "Back to today" returns. `?asof=v0` on the link opens the earlier version. |
+| As-of switch | Under the headline | Shows the whole page as of Sep 30, 2026 (the first load) or Oct 31, 2026 (one month later). Every table and check follows the date, and a live question is answered from that date's data. Saved answers are for the latest month. An answer already on screen stays when you switch, marked with the date it was answered for. | Click a date. "What changed" summarises the month; "Back to today" returns. `?asof=v0` on the link opens the earlier version. |
 | Stat tiles | Under the headline | The headline numbers: records arrived, real people after duplicates were resolved, people in both banks, accounts, transactions, the as-of date. | Read them. In the technical view the labels are the technical names. |
-| Ask in plain English | First section | Ask a question about customers, accounts or transactions in ordinary words. You get the answer in a sentence or two, often with a headline number or small chart, plus suggested next questions. | Click one of the seven ready questions, or type your own and press Enter. "Show how this was worked out" opens the query and the rows behind the answer. |
-| Daily limit | Ask section | The shared demo allows 8 questions a day for everyone combined. Saved answers for the seven ready questions always work. | When the limit is reached a red note appears; the ready questions still answer from the cache. With your own Anthropic key (`?byok` on the link) there is no limit. |
-| Settings (gear) | Ask section, bank view | Model choice, "cached answers only", and the counter of questions left today. | Click the gear. Default model is Claude Opus 5.5. |
-| The customers, one person each | Second section | Every real person as a card: which bank they came from, what they hold, deposits and loans, a red line if a checking account has gone quiet, and how confidently they were matched. | Use the filters (Everyone, In both banks, Matched by similarity, Mortgage and a quiet checking account, Harbor only, Riverside only) or search a name. Click a card for their accounts at each bank. Technical view: a sortable table with the same filters. |
+| Ask in plain English | First section | Ask a question about customers, accounts or transactions in ordinary words. You get the answer in a sentence or two, often with a headline number or small chart, plus suggested next questions. | Click one of the seven ready questions, or type your own and press Enter. Typing a ready question in your own words still gets its saved answer. "Show how this was worked out" opens the query and the rows behind the answer. |
+| Daily limit | Ask section | The shared demo allows 8 questions a day and 240 a month for everyone combined, and a question is only counted when it is actually answered. Saved answers for the seven ready questions always work. | When a limit is reached a red note says which one and when it resets; the ready questions still answer from the cache. With your own Anthropic key (`?byok` on the link) there is no limit. |
+| Settings (gear) | Ask section, bank view | Model choice, "cached answers only", and how many questions are left today and this month, with the reset time. | Click the gear. Default model is Claude Opus 5.5. |
+| The customers, one person each | Second section | Every real person as a card: which bank they came from, what they hold, deposits and loans, a red line if a checking account has gone quiet, and how confidently they were matched. | Use the filters (Everyone, In both banks, Matched by similarity, Mortgage and a quiet checking account, Harbor only, Riverside only) or search a name. Click a card for their accounts at each bank. Technical view: a table with the same filters and search; rows open with a click or the keyboard. |
 | Are these the same person? | Third section | How the two banks' customer lists were matched: how many merged automatically, how many were held for a person, how many wrong merges against the answer key, with a worked example from the review queue and the rules in plain words. | Read it. Technical view: tiers, precision and recall, outcome by designed difficulty, and the scoring formula. |
 | Can these numbers be trusted? | Fourth section | The ten checks the build ran, from "balances add up to the files the banks sent" to "'quiet' means what it says". The pipeline refuses to publish if any fails. | Read the green checks. Technical view: values, expected results and the SQL for each. |
 | For analysts: run your own SQL | Collapsed section | A SQL console over the same four tables the answers use, run entirely in your browser. | Click Show. Pick an example or write a query, then Run or Cmd+Enter. Add `_v0` or `_latest` to a table name to pin a version, for example `customer_360_v0`. |
@@ -101,7 +101,7 @@ flowchart TB
     Sources --> Pipeline --> Browser --> AI
 ```
 
-The pipeline is deterministic for its seed, so CI commits new outputs only when the code changed them. The Delta transaction logs are committed too, so anyone can open `lakehouse/gold/customer_360/_delta_log` and see the table format is real.
+The pipeline is deterministic for its seed, so CI commits new outputs only when the code changed them. The Delta transaction logs and the Iceberg metadata are committed too, so anyone can open `lakehouse/gold/customer_360/_delta_log` on GitHub and see the table format is real. That costs a few megabytes of history each time the data genuinely changes, which is accepted on purpose: the repository is the exhibit.
 
 ### The lakehouse
 
@@ -109,12 +109,12 @@ The pipeline is deterministic for its seed, so CI commits new outputs only when 
 |---|---|---|
 | raw | Core A: pipe-delimited `CUSTMAST` / `ACCTMAST` / `TXNHIST` with CIF numbers, `YYYYMMDD` dates, product codes, balances in cents. Core B: JSON lines with UUIDs, ISO dates, nested addresses. | 6 files |
 | bronze | Landed untouched, plus ingest metadata; batch 2 lands as Delta version 1 of each table | 6 Delta tables |
-| silver | One schema per entity: parsed dates, signed amounts, canonical product taxonomy, 10-digit phones, name keys | customers, accounts, transactions |
+| silver | One schema per entity: parsed dates, signed amounts, canonical product taxonomy, digit-only phones, name keys | customers, accounts, transactions |
 | match | Entity resolution across cores: DOB blocking, SSN conflict reject, tier 1 deterministic, tier 2 fuzzy with a 0-1 confidence, review queue below threshold, and reviewer decisions from `data/decisions/` applied as tier 3 once their date has passed. Scored against ground truth. | customer_xref, match_review_queue |
 | gold | `customer_360` (one row per resolved customer, survivorship rules, product flags, dormancy), `account_360`, and `review_queue` (the unmerged candidate pairs, enriched for human triage); also mirrored as Apache Iceberg under `lakehouse/iceberg/` with a SQLite catalog (a snapshot per write: one append for the first batch, then a delete plus an append for the overwrite, so three per table; the catalog stores absolute paths, so it is rebuilt wherever the pipeline runs) | 3 Delta tables + 3 Iceberg tables |
 | export | Plain Parquet for the browser, `lineage.json` mapping every gold column to its source core, field and transform rule, the replay cache, the quality checks, the change summary, the Iceberg summary and the agent's prompt and tool definition | 4 Parquet + 9 JSON + 1 MD |
 
-Synthetic scale: 2,000 people, 300 of them present in both cores across nine designed difficulty kinds (clean, nickname, typo, hyphenated name, missing SSN, changed last name, moved, and two that are deliberately undetectable), five same-name-and-birthday traps, about 4,900 accounts, 50,000 transactions. Every transform has a rule id (`S-xx`, `ER-xx`, `G-xx`) that the lineage file and the agent both cite.
+Synthetic scale: 2,000 people, 300 of them present in both cores across nine designed difficulty kinds (clean, nickname, typo, hyphenated name, missing SSN, changed last name, moved, and two that are deliberately undetectable), five same-name-and-birthday traps, about 5,000 accounts, 50,000 transactions in the first load and a month more in the second. Every transform has a rule id (`S-xx`, `ER-xx`, `G-xx`) that the lineage file and the agent both cite.
 
 ### The agent
 
@@ -163,28 +163,35 @@ What I would validate first: the included-row block sizes, whether per-instituti
 ## Repo layout
 
 ```
-data/generators/   synthetic Core A (legacy) and Core B (acquired bank) feeds, seeded
+data/generators/   synthetic Core A (legacy) and Core B (acquired bank) feeds, seeded, two batches
 data/truth/        generator ground truth, used only to score entity resolution
-pipeline/          bronze -> silver -> match -> gold (Delta Lake) -> export, lineage, agent prompt, replay
-lakehouse/raw/     the two feeds exactly as a bank would hand them over
-lakehouse/bronze|silver|gold/   Delta tables (open the _delta_log folders)
-lakehouse/export/  gold Parquet, lineage.json, match_report.json, replay.json, agent_prompt.md
-site/              Vite + React + TypeScript; DuckDB-WASM query layer, lineage badges, agent UI
-proxy/             Cloudflare Worker that holds the shared demo key (rate-limited, daily cap)
-tests/             pytest for the pipeline; vitest under site/src for the browser libraries
-.github/workflows  pipeline -> commit outputs if changed -> build site -> deploy Pages
+data/decisions/    reviewer decisions on the queue (confirm / reject, dated), applied by the matcher
+pipeline/          bronze -> silver -> match -> gold (Delta Lake) -> export, lineage, quality, agent prompt, replay
+lakehouse/raw/     the two feeds exactly as a bank would hand them over, one folder per as-of date
+lakehouse/bronze|silver|gold/   Delta tables, one version per batch (open the _delta_log folders)
+lakehouse/iceberg/ Apache Iceberg mirror of the gold layer (SQLite catalog + warehouse)
+lakehouse/export/  gold Parquet (latest and v0/), lineage, match report, quality, changes, replay, agent prompt
+site/              Vite + React + TypeScript; DuckDB-WASM query layer, lineage badges, agent UI; vitest in src/
+proxy/             Cloudflare Worker that holds the shared demo key; guard tests in proxy/test
+tests/             pytest for the pipeline (runs the pipeline into a temp folder, never touches lakehouse/)
+.github/workflows  build.yml: pipeline -> commit outputs if changed -> proxy tests -> site tests + build -> deploy Pages
+                   ci.yml: secret-free checks on pull requests and on demand
 ```
 
 ## Run locally
 
 ```
 uv sync
-uv run python -m pipeline
-uv run pytest
-cd site && pnpm install && pnpm dev
+uv run python -m pipeline          # rebuilds lakehouse/ in place (deterministic; ~3 s)
+uv run pytest                      # runs the pipeline into a temp folder first; lakehouse/ is untouched
+cd site && pnpm install && pnpm dev            # http://localhost:5173/bank-core360/
+cd site && pnpm typecheck && pnpm test && pnpm build
+cd proxy && pnpm install && pnpm typecheck && pnpm test
 ```
 
-Python 3.12, Polars, PyArrow, delta-rs, pyiceberg, DuckDB, rapidfuzz, Faker. Site: Vite, React, Tailwind, DuckDB-WASM, the Anthropic TypeScript SDK. The proxy deploys with wrangler; set `PROXY_URL` as a repository variable and `ANTHROPIC_API_KEY` as an optional secret for the replay transcripts.
+Set `BANK_CORE_DATA_ROOT=/some/folder` to point the pipeline's outputs anywhere else. Without `VITE_PROXY_URL` the site has no live route and answers from the replay cache; add `?byok` to use your own key. To run the Worker locally: `cd proxy && pnpm dev` with an `.dev.vars` file holding `ANTHROPIC_API_KEY=...` (gitignored); it validates prompts against the live site's `data/` folder (`PROMPT_SOURCE` in `wrangler.toml`).
+
+Python 3.12, Polars, PyArrow, delta-rs, pyiceberg, DuckDB, rapidfuzz, Faker. Site: Vite, React, Tailwind, DuckDB-WASM, the Anthropic TypeScript SDK. The proxy deploys with wrangler; set `PROXY_URL` as a repository variable and `ANTHROPIC_API_KEY` as a secret so CI can generate the replay transcripts. Pull requests run the secret-free checks in `ci.yml`.
 
 ## Data and privacy
 
