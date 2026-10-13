@@ -7,8 +7,10 @@ workers_dev = true
 ALLOWED_ORIGINS = "https://calvintirrell.github.io,http://localhost:5173,http://localhost:4173"
 ALLOWED_MODELS = "claude-opus-5-5,claude-sonnet-5-5"
 MAX_TOKENS_CAP = "2048"
-# Caps are counted in QUESTIONS (the browser tags every call of one question with the same
-# x-demo-question id); a question may use up to CALLS_PER_QUESTION API calls.
+# Caps are counted in QUESTIONS: the browser sends x-demo-call: 1 on the first API call of a
+# question and 2, 3, ... on its follow-ups, so only call 1 is metered; a question may use up to
+# CALLS_PER_QUESTION API calls. (The browser also sends an x-demo-question id for its own tracing;
+# the Worker does not read it.)
 DAILY_CAP = "8"
 MONTHLY_CAP = "240"
 CALLS_PER_QUESTION = "5"
