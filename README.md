@@ -46,7 +46,7 @@ Everything below is on one page at the live link. Nothing to install, no account
 | Stat tiles | Under the headline | The headline numbers: records arrived, real people after duplicates were resolved, people in both banks, accounts, transactions, the as-of date. | Read them. In the technical view the labels are the technical names. |
 | Ask in plain English | First section | Ask a question about customers, accounts or transactions in ordinary words. You get the answer in a sentence or two, often with a headline number or small chart, plus suggested next questions. | Click one of the seven ready questions, or type your own and press Enter. Typing a ready question in your own words still gets its saved answer. "Show how this was worked out" opens the query and the rows behind the answer. |
 | Daily limit | Ask section | The shared demo allows 8 questions a day and 240 a month for everyone combined, and a question is only counted when it is actually answered. Saved answers for the seven ready questions always work. | When a limit is reached a red note says which one and when it resets; the ready questions still answer from the cache. With your own Anthropic key (`?byok` on the link) there is no limit. |
-| Settings (gear) | Ask section, bank view | Model choice, "cached answers only", and how many questions are left today and this month, with the reset time. | Click the gear. Default model is Claude Opus 5.5. |
+| Settings (gear) | Ask section, bank view | Model choice, "saved answers only", and how many questions are left today and this month, with the reset time. | Click the gear. Default model is Claude Opus 5.5. |
 | The customers, one person each | Second section | Every real person as a card: which bank they came from, what they hold, deposits and loans, a red line if a checking account has gone quiet, and how confidently they were matched. | Use the filters (Everyone, In both banks, Matched by similarity, Mortgage and a quiet checking account, Harbor only, Riverside only) or search a name. Click a card for their accounts at each bank. Technical view: a table with the same filters and search; rows open with a click or the keyboard. |
 | Are these the same person? | Third section | How the two banks' customer lists were matched: how many merged automatically, how many were held for a person, how many wrong merges against the answer key, with a worked example from the review queue and the rules in plain words. | Read it. Technical view: tiers, precision and recall, outcome by designed difficulty, and the scoring formula. |
 | Can these numbers be trusted? | Fourth section | The ten checks the build ran, from "balances add up to the files the banks sent" to "'quiet' means what it says". The pipeline refuses to publish if any fails. | Read the green checks. Technical view: values, expected results and the SQL for each. |
@@ -75,7 +75,7 @@ It cannot answer anything outside those tables, and it will say so. Every answer
 3. Claude reads the rows and writes the answer, with caveats that cite the rules it relied on, and suggests follow-up questions.
 4. The page shows the answer first, and the query and rows under "Show how this was worked out".
 
-A question normally costs two API calls. The seven ready questions are also cached, so they work even when the daily limit is reached.
+A question normally costs two API calls. The seven ready questions also have saved answers, so they work even when the daily limit is reached.
 
 ## How it works
 
@@ -130,7 +130,7 @@ This is a first cut from the product side, meant to be argued with. Most integra
 
 | Tier | Who | What's included | How it's priced |
 |---|---|---|---|
-| Sandbox | Evaluators, partners, hiring panels | Synthetic data, the full page, cached answers, no live AI | Free |
+| Sandbox | Evaluators, partners, hiring panels | Synthetic data, the full page, saved answers, no live AI | Free |
 | Core | A bank with one or two cores | Platform fee, two core connectors, the governed customer-360 and account tables, SQL and dashboards, plain-English questions included | Annual platform fee plus a block of governed rows under management |
 | Growth | Banks adding fintechs, CRM, card and payment feeds | Everything in Core, marketplace connectors, more sources, scheduled refreshes | Platform fee plus consumption above the included rows, connector SKUs for premium systems |
 | Governed | Institutions preparing for examination or an acquisition | Everything in Growth, review-queue workflow, role-based masking, lineage and audit exports, retention controls | Platform fee uplift, priced per institution rather than per user |
@@ -189,7 +189,7 @@ cd site && pnpm typecheck && pnpm test && pnpm build
 cd proxy && pnpm install && pnpm typecheck && pnpm test
 ```
 
-Set `BANK_CORE_DATA_ROOT=/some/folder` to point the pipeline's outputs anywhere else. Without `VITE_PROXY_URL` the site has no live route and answers from the replay cache; add `?byok` to use your own key. To run the Worker locally: `cd proxy && pnpm dev` with an `.dev.vars` file holding `ANTHROPIC_API_KEY=...` (gitignored); it validates prompts against the live site's `data/` folder (`PROMPT_SOURCE` in `wrangler.toml`).
+Set `BANK_CORE_DATA_ROOT=/some/folder` to point the pipeline's outputs anywhere else. Without `VITE_PROXY_URL` the site has no live route and shows only the saved answers. To run the Worker locally: `cd proxy && pnpm dev` with an `.dev.vars` file holding `ANTHROPIC_API_KEY=...` (gitignored); it validates prompts against the live site's `data/` folder (`PROMPT_SOURCE` in `wrangler.toml`).
 
 Python 3.12, Polars, PyArrow, delta-rs, pyiceberg, DuckDB, rapidfuzz, Faker. Site: Vite, React, Tailwind, DuckDB-WASM, the Anthropic TypeScript SDK. The proxy deploys with wrangler; set `PROXY_URL` as a repository variable and `ANTHROPIC_API_KEY` as a secret so CI can generate the replay transcripts. Pull requests run the secret-free checks in `ci.yml`.
 

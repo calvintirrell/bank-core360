@@ -32,7 +32,7 @@ export function Stat({ label, value, hint }: { label: string; value: string; hin
     <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
       <div className="text-2xl font-semibold tabular-nums tracking-tight">{value}</div>
       <div className="text-xs text-slate-600">{label}</div>
-      {hint && <div className="text-[11px] text-slate-400">{hint}</div>}
+      {hint && <div className="text-[11px] text-slate-500">{hint}</div>}
     </div>
   )
 }

@@ -76,7 +76,7 @@ function Shell() {
         <nav className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2 text-sm">
           <a href="#overview" className="mr-2 font-semibold tracking-tight">Bank Core 360</a>
           {nav.map(([href, label]) => (
-            <a key={href} href={href} className="text-slate-600 hover:text-slate-900">{label}</a>
+            <a key={href} href={href} className="hidden text-slate-600 hover:text-slate-900 sm:inline">{label}</a>
           ))}
           {bank && (
             <button type="button" onClick={() => setTour(true)} className="rounded-full border border-violet-300 bg-violet-50 px-3 py-1 text-xs font-medium text-violet-900 hover:bg-violet-100">

@@ -94,7 +94,7 @@ export function AgentPanel({ lineage, asOf, latestAsOf }: { lineage: Lineage | n
     const entry = findCached(text)
     if (replayActive) {
       if (!entry) {
-        setError('Cached answers exist only for the listed questions. Pick one, or wait for the daily limit to reset.')
+        setError('Saved answers exist only for the listed questions. Pick one, or wait for the daily limit to reset.')
         return
       }
       setRun({ ...replayRun(entry), asOf: latestAsOf ?? undefined })
@@ -171,7 +171,7 @@ export function AgentPanel({ lineage, asOf, latestAsOf }: { lineage: Lineage | n
             disabled={busy || !engineReady || !question.trim() || (replayActive && !cached)}
             className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
           >
-            {!engineReady ? 'Loading engine…' : busy ? 'Thinking…' : replayActive ? 'Show cached answer' : 'Ask'}
+            {!engineReady ? 'Loading engine…' : busy ? 'Thinking…' : replayActive ? 'Show saved answer' : 'Ask'}
           </button>
         </div>
 
@@ -181,7 +181,7 @@ export function AgentPanel({ lineage, asOf, latestAsOf }: { lineage: Lineage | n
               {engine === 'loading' && 'Loading the in-browser query engine…'}
               {engine === 'error' && <span className="text-red-700">The query engine failed to load; reload the page.</span>}
             </span>
-            <button type="button" onClick={() => setShowSettings((v) => !v)} className="rounded-full border border-slate-300 px-2 py-0.5 hover:bg-slate-100" aria-expanded={showSettings} title="Model, cached answers, daily limit">
+            <button type="button" onClick={() => setShowSettings((v) => !v)} className="rounded-full border border-slate-300 px-2 py-0.5 hover:bg-slate-100" aria-expanded={showSettings} title="Model, saved answers, daily limit">
               ⚙ {showSettings ? 'hide settings' : 'settings'}
             </button>
           </div>
@@ -208,7 +208,7 @@ export function AgentPanel({ lineage, asOf, latestAsOf }: { lineage: Lineage | n
           </label>
           <label className="flex items-center gap-1">
             <input type="checkbox" checked={replayActive} disabled={!liveAvailable} onChange={(e) => setUseReplay(e.target.checked)} />
-            cached answers only
+            saved answers only
           </label>
           {!bank && engine === 'loading' && <span>Loading the in-browser query engine…</span>}
           {!bank && engine === 'error' && <span className="text-red-700">The query engine failed to load; reload the page.</span>}
@@ -243,7 +243,7 @@ const fmtAsOf = (iso: string) => new Date(iso + 'T00:00:00Z').toLocaleDateString
 function Transcript({ run, lineage, apiKey, busy, bank, forceWork, staleAsOf, onAsk }: { run: AgentRun; lineage: Lineage | null; apiKey: string; busy: boolean; bank: boolean; forceWork?: boolean; staleAsOf: string | null; onAsk: (q: string) => void }) {
   const [showWork, setShowWork] = useState(!bank || !!forceWork)
   useEffect(() => setShowWork(!bank || !!forceWork), [bank, run.question, forceWork])
-  const routeText = run.route === 'replay' ? 'cached answer (replay)' : routeLabel(apiKey)
+  const routeText = run.route === 'replay' ? 'saved answer (replay)' : routeLabel(apiKey)
   const last = run.steps.length ? run.steps[run.steps.length - 1] : null
   const headline = last?.result ? headlineFor(last.result) : null
   return (
@@ -268,7 +268,7 @@ function Transcript({ run, lineage, apiKey, busy, bank, forceWork, staleAsOf, on
 
       {run.pending && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-          Cached answer: the query and result below are real, run by the pipeline. The written explanation for this question is generated in CI once an API key is configured there.
+          Saved answer: the query and result below are real, run by the pipeline. The written explanation for this question is generated in CI once an API key is configured there.
         </div>
       )}
 
@@ -285,9 +285,9 @@ function Transcript({ run, lineage, apiKey, busy, bank, forceWork, staleAsOf, on
 
       {run.steps.length > 0 && (
         <div className="rounded-xl border border-slate-200 bg-white">
-          <button type="button" onClick={() => setShowWork((v) => !v)} aria-expanded={showWork} className="flex w-full items-center justify-between px-3 py-2 text-left text-sm">
+          <button type="button" onClick={() => setShowWork((v) => !v)} aria-expanded={showWork} className="flex w-full flex-wrap items-center justify-between gap-x-3 gap-y-0.5 px-3 py-2 text-left text-sm">
             <span className="font-medium">{showWork ? 'How this was worked out' : 'Show how this was worked out'}</span>
-            <span className="text-xs text-slate-500">
+            <span className="basis-full text-xs text-slate-500 sm:basis-auto">
               {run.steps.length} quer{run.steps.length === 1 ? 'y' : 'ies'}{last?.result ? ` · ${last.result.row_count.toLocaleString()} row${last.result.row_count === 1 ? '' : 's'}` : ''} · {showWork ? 'hide' : 'show'}
             </span>
           </button>
@@ -316,7 +316,7 @@ function Transcript({ run, lineage, apiKey, busy, bank, forceWork, staleAsOf, on
       <div className="text-xs text-slate-500">
         {bank
           ? run.route === 'replay'
-            ? 'Cached answer, generated earlier by the same assistant.'
+            ? 'Saved answer, generated earlier by the same assistant.'
             : 'Answered by Claude just now, using only the tables on this page.'
           : `${run.model ? `${run.model} via ${routeText}` : routeText}${run.calls > 0 ? ` · ${run.calls} API call${run.calls === 1 ? '' : 's'} · ${run.usage.input_tokens.toLocaleString()} in / ${run.usage.output_tokens.toLocaleString()} out tokens` : ''}`}
       </div>

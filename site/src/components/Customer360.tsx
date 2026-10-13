@@ -40,6 +40,12 @@ export function Customer360({ lineage }: { lineage: Lineage | null }) {
   const [filter, setFilter] = useState(0)
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(0)
+  const [sort, setSort] = useState<{ col: (typeof COLUMNS)[number]; dir: 'asc' | 'desc' }>({ col: 'customer_key', dir: 'asc' })
+  const toggleSort = (col: string) => {
+    if (!(COLUMNS as readonly string[]).includes(col)) return
+    setSort((s) => (s.col === col ? { col: s.col, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { col: col as (typeof COLUMNS)[number], dir: 'asc' }))
+    setPage(0)
+  }
   const [total, setTotal] = useState<number | null>(null)
   const [result, setResult] = useState<QueryResult | null>(null)
   const [selected, setSelected] = useState<string | null>(null)
@@ -55,7 +61,7 @@ export function Customer360({ lineage }: { lineage: Lineage | null }) {
       try {
         // One statement: the page plus the total over the same filter (window count).
         const r = await runSql(
-          `SELECT ${COLUMNS.join(', ')}, count(*) OVER () AS _total FROM customer_360 WHERE ${where} ORDER BY customer_key LIMIT ${PAGE} OFFSET ${page * PAGE}`,
+          `SELECT ${COLUMNS.join(', ')}, count(*) OVER () AS _total FROM customer_360 WHERE ${where} ORDER BY ${sort.col} ${sort.dir.toUpperCase()} NULLS LAST, customer_key LIMIT ${PAGE} OFFSET ${page * PAGE}`,
         )
         if (cancelled) return
         setTotal(r.rows.length ? Number(r.rows[0]._total) : 0)
@@ -68,7 +74,7 @@ export function Customer360({ lineage }: { lineage: Lineage | null }) {
     return () => {
       cancelled = true
     }
-  }, [where, page])
+  }, [where, page, sort])
 
   useEffect(() => {
     if (!selected) {
@@ -129,12 +135,23 @@ export function Customer360({ lineage }: { lineage: Lineage | null }) {
           <table className="min-w-full text-sm">
             <thead className="bg-slate-50">
               <tr className="text-left text-xs uppercase tracking-wide text-slate-600">
-                {result.columns.filter((c) => !CARD_ONLY.includes(c.name)).map((c) => (
-                  <th key={c.name} className="whitespace-nowrap px-3 py-2 font-medium">
-                    {c.name.replace(/_/g, ' ')}
-                    <LineageBadge column={c.name} lineage={lineage} table="customer_360" />
-                  </th>
-                ))}
+                {result.columns.filter((c) => !CARD_ONLY.includes(c.name)).map((c) => {
+                  const active = sort.col === c.name
+                  return (
+                    <th key={c.name} aria-sort={active ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'} className="whitespace-nowrap px-3 py-2 font-medium">
+                      <button
+                        type="button"
+                        onClick={() => toggleSort(c.name)}
+                        className={`inline-flex items-center gap-1 uppercase tracking-wide hover:text-slate-900 ${active ? 'text-slate-900' : ''}`}
+                        title={`Sort by ${c.name.replace(/_/g, ' ')}`}
+                      >
+                        {c.name.replace(/_/g, ' ')}
+                        <span aria-hidden="true" className={`text-[10px] ${active ? 'text-slate-900' : 'text-slate-400'}`}>{active ? (sort.dir === 'asc' ? '▲' : '▼') : '⇅'}</span>
+                      </button>
+                      <LineageBadge column={c.name} lineage={lineage} table="customer_360" />
+                    </th>
+                  )
+                })}
               </tr>
             </thead>
             <tbody>

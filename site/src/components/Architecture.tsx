@@ -50,7 +50,7 @@ export function Architecture({ embedded }: { embedded?: boolean }) {
                 <li key={t} className="flex flex-wrap items-baseline gap-x-3">
                   <span className="font-mono font-semibold">gold.{t}</span>
                   <span className="text-slate-600">{v.rows.toLocaleString()} rows · {v.snapshots} snapshots</span>
-                  <a className="font-mono text-slate-500 underline" href={`https://github.com/calvintirrell/bank-core360/tree/main/${v.metadata_dir}`} target="_blank" rel="noreferrer">
+                  <a className="inline-block rounded-md border border-slate-300 bg-slate-50 px-2 py-0.5 font-mono text-slate-700 hover:bg-slate-200" href={`https://github.com/calvintirrell/bank-core360/tree/main/${v.metadata_dir}`} target="_blank" rel="noreferrer">
                     metadata/
                   </a>
                 </li>

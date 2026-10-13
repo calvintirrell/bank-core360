@@ -41,4 +41,22 @@ describe('Customer 360 table (technical view)', () => {
     await waitFor(() => expect((runSql as ReturnType<typeof vi.fn>).mock.calls.some(([sql]) => /FROM account_360 WHERE customer_key = 'C1'/.test(String(sql)))).toBe(true))
     expect(screen.getByRole('row', { name: /Ada Lovelace: hide accounts/ })).toBeTruthy()
   })
+
+  it('sorts by a clicked header, toggling direction, and announces it', async () => {
+    localStorage.setItem(MODE_KEY, 'tech')
+    render(
+      <ModeProvider>
+        <AsOfProvider>
+          <Customer360 lineage={null} />
+        </AsOfProvider>
+      </ModeProvider>,
+    )
+    const header = await screen.findByRole('button', { name: /deposit balance/i })
+    fireEvent.click(header)
+    await waitFor(() => expect((runSql as ReturnType<typeof vi.fn>).mock.calls.some(([sql]) => /ORDER BY deposit_balance ASC NULLS LAST, customer_key/.test(String(sql)))).toBe(true))
+    expect(header.closest('th')!.getAttribute('aria-sort')).toBe('ascending')
+    fireEvent.click(header)
+    await waitFor(() => expect((runSql as ReturnType<typeof vi.fn>).mock.calls.some(([sql]) => /ORDER BY deposit_balance DESC NULLS LAST/.test(String(sql)))).toBe(true))
+    expect(header.closest('th')!.getAttribute('aria-sort')).toBe('descending')
+  })
 })

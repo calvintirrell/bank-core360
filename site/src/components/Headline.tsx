@@ -33,11 +33,11 @@ export function HeadlineView({ h }: { h: Headline }) {
           return (
             <g key={b.category} className="group">
               <title>{`${b.category}: ${num.format(b.value)}`}</title>
-              <text x={labelW - 8} y={y + 12} textAnchor="end" fontSize={11} fill="#334155" className="font-mono">
-                {b.category.length > 22 ? b.category.slice(0, 21) + '…' : b.category}
+              <text x={labelW - 8} y={y + 12} textAnchor="end" fill="#334155" className="font-mono text-[14px] sm:text-[11px]">
+                {b.category.length > 20 ? b.category.slice(0, 19) + '…' : b.category}
               </text>
               <rect x={labelW} y={y} width={w} height={rowH - 8} rx={4} fill="#475569" className="transition group-hover:fill-slate-900" />
-              <text x={labelW + w + 6} y={y + 12} fontSize={11} fill="#334155" className="tabular-nums">
+              <text x={labelW + w + 6} y={y + 12} fill="#334155" className="tabular-nums text-[14px] sm:text-[11px]">
                 {Math.abs(b.value) >= 10000 ? compact.format(b.value) : num.format(b.value)}
               </text>
             </g>
