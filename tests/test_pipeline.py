@@ -180,7 +180,7 @@ def test_dormancy_matches_generator_truth(con):
 
 
 def test_gate_question_mortgage_and_dormant_checking(con):
-    """The interview question: customers with a mortgage and a checking account dormant 6 months."""
+    """The gate question: customers with a mortgage and a checking account dormant 6 months."""
     via_360 = con.sql("SELECT count(*) FROM customer_360 WHERE has_mortgage AND checking_dormant_180d").fetchone()[0]
     via_accounts = con.sql(
         """SELECT count(DISTINCT m.customer_key) FROM account_360 m JOIN account_360 c USING (customer_key)
