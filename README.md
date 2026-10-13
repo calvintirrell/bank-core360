@@ -6,6 +6,8 @@ Two mismatched banking cores, one governed customer-360 lakehouse, queryable in 
 
 ![Bank mode: the scenario, a question asked in plain English, the answer with the evidence folded away, the customers as people, and the matching decisions](docs/demo.gif)
 
+**Jump to:** [Non-technical start](#if-you-are-not-technical-start-here) · [Who it is for](#who-this-is-for) · [How it works](#how-it-works) · [Packaging and roadmap](#packaging-sketch) · [How it was built](#how-it-was-built) · [Run locally](#run-locally)
+
 ## If you are not technical, start here
 
 Harbor Bank has just acquired Riverside Bank. Each ran its own core banking system, and the two disagree about almost everything: who the customers are, what an account is called, even how a date is written. The page is the first week after the deal, with both systems brought together and every customer resolved to one person.
@@ -159,6 +161,16 @@ What I would validate first: the included-row block sizes, whether per-instituti
 - **"Dormant customer" is not "dormant account."** The customer-level flag is true if any open checking account is dormant, so a customer can be flagged and still active elsewhere. The agent caught this on its own because the rule is in its prompt, which is the argument for putting lineage rules in front of the model rather than hoping it infers them.
 - **Infrastructure that lies quietly.** The first rate-limiter configuration deployed as inert metadata and enforced nothing. It was only caught by firing requests at it. Every guard in the Worker's code is now covered by a unit test that runs in CI (origin, rate limit, kill switch, body size, model, tool shape, prompt hash, metering, passthrough, no key leakage); the rate-limit binding itself is still proven by firing requests at the deployed Worker, because a binding cannot be unit-tested.
 - **Cost control on a public AI demo.** The first cap counted API calls, and a question takes two or more, so the counter confused people. Counting questions instead needed the page to tell the proxy which call of a question each request is, because the proxy's key-value store is only eventually consistent and could not reliably recognise a follow-up call on its own. A hard per-day call ceiling backstops it. Exactly the kind of metering decision that needs a real answer in a product.
+
+## How it was built
+
+I built this in five days with Claude Code as the build partner. The honest split:
+
+- **Decided by me.** The problem (two cores after an acquisition) and the three things the page had to prove. The two views, one for the bank and one for the data team. That the matcher grades itself against ground truth and holds every doubtful pair for a person rather than guessing. The caps and billing rails a public AI demo needs before the link goes out. Which layout and wording to ship, chosen from side-by-side options. And the call to keep the generated tables in the repo so the exhibit is self-contained.
+- **Drafted by the model, reviewed by me.** Most of the code, the tests and the first pass of every document. I read the output the way a product manager reads a spec: does the claim hold, how could it fail, and what does a visitor see when it does.
+- **What the review caught.** A rate limiter that deployed as inert metadata and enforced nothing. A cost counter that charged a question before the model had answered, so an outage would have cost visitors their quota. A data-quality check that re-evaluated the formula it was meant to verify instead of recomputing from an independent source. People cards that described a reviewer's confirmation as "matched by similarity, 100% confident". Each one became a test before it became a fix.
+
+The rule I held to throughout: the README describes no guard that does not have a test, and every number on the page comes from a file the pipeline wrote.
 
 ## Repo layout
 
