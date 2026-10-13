@@ -187,8 +187,7 @@
     "passed": 10
   },
   "replay": {
-    "questions": 7,
-    "with_transcript": 7
+    "questions": 7
   },
   "schema_version": 2,
   "seed": 360,
