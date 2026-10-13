@@ -57,7 +57,7 @@ export function LineageBadge({ column, lineage, table }: { column: string; linea
         onClick={toggle}
         title={title}
         className={`ml-1 rounded border px-1 text-[10px] font-semibold leading-4 ${COLORS[text]}`}
-        aria-label={`lineage for ${column}`}
+        aria-label={`${text}: lineage for ${column}`}
         aria-expanded={!!pos}
       >
         {text}

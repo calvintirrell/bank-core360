@@ -153,6 +153,7 @@ export function AgentPanel({ lineage }: { lineage: Lineage | null }) {
             onChange={(e) => setQuestion(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && !busy && engineReady && ask(question)}
             placeholder="Ask anything about these customers, accounts or transactions…"
+            aria-label="Your question"
             className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm"
           />
           <button
@@ -183,6 +184,7 @@ export function AgentPanel({ lineage }: { lineage: Lineage | null }) {
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               placeholder={PROXY_URL ? 'optional: your own sk-ant-… key' : 'sk-ant-…'}
+              aria-label="Your own Anthropic API key (optional)"
               className="w-full rounded-md border border-slate-300 px-2 py-1 font-mono text-xs sm:w-64"
               autoComplete="off"
             />

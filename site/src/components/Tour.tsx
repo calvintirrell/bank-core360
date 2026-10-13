@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 const SEEN_KEY = 'bc360.tourSeen'
 
@@ -33,12 +33,40 @@ function highlight(target: string | null) {
 /** A five-stop walkthrough in a fixed bottom sheet; highlights and scrolls to each section. */
 export function Tour({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [i, setI] = useState(0)
+  const panel = useRef<HTMLDivElement>(null)
+  const opener = useRef<Element | null>(null)
   useEffect(() => {
     if (!open) {
       highlight(null)
       return
     }
     setI(0)
+  }, [open])
+  // Focus management: remember what opened the tour, move focus into it, keep Tab inside, give focus back on close.
+  useEffect(() => {
+    if (!open) return
+    opener.current = document.activeElement
+    const focusables = () => Array.from(panel.current?.querySelectorAll<HTMLElement>('button:not([disabled])') ?? [])
+    focusables().at(-1)?.focus()
+    const trap = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return
+      const f = focusables()
+      if (f.length === 0) return
+      const first = f[0]
+      const last = f[f.length - 1]
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault()
+        first.focus()
+      }
+    }
+    document.addEventListener('keydown', trap)
+    return () => {
+      document.removeEventListener('keydown', trap)
+      if (opener.current instanceof HTMLElement) opener.current.focus()
+    }
   }, [open])
   useEffect(() => {
     if (!open) return
@@ -56,17 +84,17 @@ export function Tour({ open, onClose }: { open: boolean; onClose: () => void }) 
   const s = STOPS[i]
   const last = i === STOPS.length - 1
   return (
-    <div role="dialog" aria-label="Guided tour" className="fixed inset-x-0 bottom-0 z-40 px-3 pb-3 sm:px-6 sm:pb-6">
-      <div className="mx-auto max-w-2xl rounded-2xl border border-violet-200 bg-white p-4 shadow-2xl">
+    <div role="dialog" aria-modal="true" aria-label="Guided tour" aria-describedby="tour-text" className="fixed inset-x-0 bottom-0 z-40 px-3 pb-3 sm:px-6 sm:pb-6">
+      <div ref={panel} className="mx-auto max-w-2xl rounded-2xl border border-violet-200 bg-white p-4 shadow-2xl">
         <div className="mb-1 flex items-center justify-between text-xs text-slate-500">
           <span>Show me around · {i + 1} of {STOPS.length}</span>
           <button type="button" onClick={onClose} className="hover:text-slate-800">Skip</button>
         </div>
         <div className="text-base font-semibold">{s.title}</div>
-        <p className="mt-1 text-sm text-slate-700">{s.text}</p>
+        <p id="tour-text" className="mt-1 text-sm text-slate-700">{s.text}</p>
         <div className="mt-3 flex items-center justify-between gap-2">
           <button type="button" disabled={i === 0} onClick={() => setI(i - 1)} className="rounded-md border border-slate-300 px-3 py-1.5 text-sm disabled:opacity-40">Back</button>
-          <div className="flex gap-1">{STOPS.map((_, j) => <span key={j} className={`h-1.5 w-1.5 rounded-full ${j === i ? 'bg-violet-500' : 'bg-slate-300'}`} />)}</div>
+          <div className="flex gap-1" role="img" aria-label={`step ${i + 1} of ${STOPS.length}`}>{STOPS.map((_, j) => <span key={j} className={`h-1.5 w-1.5 rounded-full ${j === i ? 'bg-violet-500' : 'bg-slate-300'}`} />)}</div>
           <button type="button" onClick={() => (last ? onClose() : setI(i + 1))} className="rounded-md bg-slate-900 px-4 py-1.5 text-sm font-medium text-white">{last ? 'Done' : 'Next'}</button>
         </div>
       </div>

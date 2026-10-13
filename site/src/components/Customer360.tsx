@@ -115,6 +115,7 @@ export function Customer360({ lineage }: { lineage: Lineage | null }) {
             setPage(0)
           }}
           placeholder="search name…"
+          aria-label="Search customers by name"
           className="ml-auto w-full rounded-md border border-slate-300 px-3 py-1 text-sm sm:w-48"
         />
       </div>
@@ -141,7 +142,15 @@ export function Customer360({ lineage }: { lineage: Lineage | null }) {
                 return (
                   <tr
                     key={key}
+                    tabIndex={0}
+                    aria-label={`${String(row.full_name)}: ${isSel ? 'hide' : 'show'} accounts`}
                     onClick={() => setSelected(isSel ? null : key)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        setSelected(isSel ? null : key)
+                      }
+                    }}
                     className={`cursor-pointer border-t border-slate-100 ${isSel ? 'bg-violet-50' : 'hover:bg-slate-50'}`}
                   >
                     {result.columns.filter((c) => !CARD_ONLY.includes(c.name)).map((c) => {
@@ -150,7 +159,12 @@ export function Customer360({ lineage }: { lineage: Lineage | null }) {
                       if (c.name === 'source_systems') {
                         cell = <span className={`rounded px-1.5 py-0.5 text-[11px] font-semibold ${SYSTEM_BADGE[String(v)] ?? ''}`}>{String(v).replace('core_a+core_b', 'A + B').replace('core_a', 'A').replace('core_b', 'B')}</span>
                       } else if (c.kind === 'boolean') {
-                        cell = v ? <span className={c.name === 'checking_dormant_180d' ? 'font-semibold text-red-600' : 'text-emerald-700'}>●</span> : <span className="text-slate-300">·</span>
+                        const yes = c.name === 'checking_dormant_180d' ? 'yes, a checking account is quiet' : 'yes'
+                        cell = v ? (
+                          <span role="img" aria-label={yes} title={yes} className={c.name === 'checking_dormant_180d' ? 'font-semibold text-red-600' : 'text-emerald-700'}>●</span>
+                        ) : (
+                          <span role="img" aria-label="no" title="no" className="text-slate-300">·</span>
+                        )
                       }
                       return (
                         <td key={c.name} className={`whitespace-nowrap px-3 py-1.5 font-mono text-xs tabular-nums ${c.kind === 'number' || c.kind === 'integer' ? 'text-right' : ''}`}>

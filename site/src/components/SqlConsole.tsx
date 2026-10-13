@@ -48,6 +48,7 @@ export function SqlConsole({ lineage, embedded }: { lineage: Lineage | null; emb
         ))}
       </div>
       <textarea
+        aria-label="SQL query"
         value={sql}
         onChange={(e) => setSql(e.target.value)}
         onKeyDown={(e) => {
