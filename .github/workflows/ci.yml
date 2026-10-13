@@ -1,0 +1,77 @@
+name: ci
+
+# Secret-free checks for pull requests (including from forks) and on demand: the pipeline and its
+# tests, the site typecheck + tests, the Worker typecheck + tests. Nothing here deploys, commits,
+# or can see ANTHROPIC_API_KEY; the replay cache simply keeps its explanations pending.
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pipeline:
+    name: pipeline + pytest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - run: uv sync --frozen
+      - run: uv run ruff check pipeline tests data
+      - run: uv run ruff format --check pipeline tests data
+      - run: uv run pytest -q
+      - name: the committed data matches a fresh build
+        run: |
+          uv run python -m pipeline
+          git add -N lakehouse/raw lakehouse/export data/truth
+          git diff --quiet -- lakehouse/raw data/truth ':!lakehouse/export/replay.json' lakehouse/export || { echo "::error::a fresh pipeline run differs from the committed data; run the pipeline and commit"; git diff --stat -- lakehouse/raw lakehouse/export data/truth; exit 1; }
+
+  site:
+    name: site typecheck + tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.4.0
+        with:
+          version: 11
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: site/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+        working-directory: site
+      - run: pnpm typecheck
+        working-directory: site
+      - run: pnpm test
+        working-directory: site
+      - run: pnpm build
+        working-directory: site
+
+  proxy:
+    name: proxy typecheck + tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.4.0
+        with:
+          version: 11
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: proxy/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+        working-directory: proxy
+      - run: pnpm typecheck
+        working-directory: proxy
+      - run: pnpm test
+        working-directory: proxy

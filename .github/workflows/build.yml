@@ -5,10 +5,8 @@ on:
     branches: [main]
   workflow_dispatch:
 
-permissions:
-  contents: write
-  pages: write
-  id-token: write
+# Least privilege: nothing at the workflow level; each job asks for exactly what it needs.
+permissions: {}
 
 concurrency:
   group: pages
@@ -18,9 +16,11 @@ jobs:
   pipeline:
     name: pipeline (bronze -> silver -> gold -> export)
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # commits the rebuilt lakehouse when the data changed
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
         with:
           python-version: "3.12"
           enable-cache: true
@@ -29,7 +29,9 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       - run: uv run pytest -q
-        if: hashFiles('tests/**/*.py') != ''
+      - name: dependency audit (advisory)
+        continue-on-error: true
+        run: uvx pip-audit --strict --desc on -r <(uv export --frozen --no-hashes --no-dev --format requirements.txt)
       - name: commit lakehouse outputs (only when the data actually changed)
         # The raw feeds, exports and reports are byte-deterministic for a given seed, so they are
         # the change signal. Delta logs carry timestamps and random part-file names, so they are
@@ -43,22 +45,26 @@ jobs:
           else
             git add lakehouse
             git commit -m "data: rebuild lakehouse from ${GITHUB_SHA::7} [skip ci]"
-            git push
+            # A human push between checkout and here makes this non-fast-forward: rebase once and retry.
+            git push || (git pull --rebase origin main && git push)
           fi
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: lakehouse-export
           path: lakehouse/export
+          retention-days: 7
 
   proxy:
     name: proxy (typecheck + guard tests)
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.4.0
         with:
           version: 11
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
           cache: pnpm
@@ -69,26 +75,40 @@ jobs:
         working-directory: proxy
       - run: pnpm test
         working-directory: proxy
+      - name: dependency audit (advisory)
+        continue-on-error: true
+        run: pnpm audit --prod
+        working-directory: proxy
 
   site:
     name: build site
     needs: [pipeline, proxy]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: lakehouse-export
           path: lakehouse/export
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.4.0
         with:
           version: 11
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
           cache: pnpm
           cache-dependency-path: site/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
+        working-directory: site
+      - run: pnpm typecheck
+        working-directory: site
+      - run: pnpm test
+        working-directory: site
+      - name: dependency audit (advisory)
+        continue-on-error: true
+        run: pnpm audit --prod
         working-directory: site
       - run: pnpm build
         working-directory: site
@@ -96,10 +116,10 @@ jobs:
           BUILD_RUN_NUMBER: ${{ github.run_number }}
           BUILD_SHA: ${{ github.sha }}
           VITE_PROXY_URL: ${{ vars.PROXY_URL }}
-      - uses: actions/configure-pages@v5
+      - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5.0.0
         with:
           enablement: true
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
         with:
           path: site/dist
 
@@ -107,9 +127,12 @@ jobs:
     name: deploy to GitHub Pages
     needs: site
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5

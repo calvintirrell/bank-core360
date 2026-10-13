@@ -170,9 +170,10 @@ def main() -> int:
         if not fresh:
             iceberg.write_summary(ice)
             (EXPORT / "raw_samples.json").write_text(json.dumps(raw_samples(), indent=1) + "\n")
-            # `regenerated` is run state (how many transcripts this run rebuilt), not data: keep it out of
-            # the manifest so a run that reuses every transcript leaves the export byte-identical.
-            manifest["replay"] = {k: v for k, v in replay.write().items() if k != "regenerated"}
+            # Only the question count is data. `regenerated` and `with_transcript` are run state (whether
+            # this run had a key and rebuilt transcripts); keeping them out lets a key-less run (a PR check)
+            # reproduce the committed manifest byte for byte.
+            manifest["replay"] = {"questions": replay.write()["questions"]}
             ch = changes(version_dir(BATCHES[i - 1]), EXPORT)
             (EXPORT / "changes.json").write_text(json.dumps(ch, indent=1) + "\n")
             manifest["changes"] = ch
