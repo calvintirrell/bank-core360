@@ -23,7 +23,7 @@ export function AgentPanel({ lineage, asOf, latestAsOf }: { lineage: Lineage | n
   const bank = useBankMode()
   const { version } = useAsOf()
   const latest = version === 'latest'
-  const [showSettings, setShowSettings] = useState(false)
+  const [showSettings, setShowSettings] = useState(true) // open by default; the button hides them
   const [apiKey, setApiKey] = useState(() => sessionStorage.getItem('bc360.apiKey') ?? '')
   const showByok = byokRequested() || apiKey !== '' || !PROXY_URL
   // Own-key-only models are offered only while a key is present; the proxy would refuse them.

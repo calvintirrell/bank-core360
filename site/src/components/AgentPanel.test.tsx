@@ -59,3 +59,16 @@ describe('AgentPanel Enter key', () => {
     await waitFor(() => expect(screen.getByText('Done.')).toBeTruthy())
   })
 })
+
+describe('AgentPanel settings', () => {
+  it('shows the settings open by default in bank view, and the button hides them', async () => {
+    mount()
+    const toggle = await screen.findByRole('button', { name: /hide settings/ })
+    expect(toggle.getAttribute('aria-expanded')).toBe('true')
+    const row = screen.getByLabelText('saved answers only').closest('label')!.parentElement!
+    expect(row.className).not.toContain('hidden')
+    fireEvent.click(toggle)
+    expect(screen.getByRole('button', { name: /settings/ }).getAttribute('aria-expanded')).toBe('false')
+    expect(row.className).toContain('hidden')
+  })
+})
