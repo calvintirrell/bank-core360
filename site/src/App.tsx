@@ -90,7 +90,7 @@ function Shell() {
         {error && <pre className="rounded-md bg-red-50 p-3 text-xs text-red-700">Could not load the lakehouse exports: {error}</pre>}
         {bank && !tour && <TourOffer onStart={() => setTour(true)} />}
         <Hero manifest={lh?.manifest ?? null} report={lh?.matchReport ?? null} changes={lh?.changes ?? null} latest={lh?.latest ?? null} />
-        <AgentPanel key={`ask-${ready}`} lineage={lh?.lineage ?? null} />
+        <AgentPanel lineage={lh?.lineage ?? null} asOf={lh?.manifest.as_of ?? null} latestAsOf={lh?.latest.as_of ?? null} />
         <Customer360 key={`c360-${ready}`} lineage={lh?.lineage ?? null} />
         {bank ? <Decisions key={`dec-${ready}`} report={lh?.matchReport ?? null} /> : <MatchReport key={`mr-${ready}`} report={lh?.matchReport ?? null} />}
         <QualityPanel />

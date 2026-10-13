@@ -38,7 +38,7 @@ const mount = () =>
   render(
     <ModeProvider>
       <AsOfProvider>
-        <AgentPanel lineage={null} />
+        <AgentPanel lineage={null} asOf="2026-10-31" latestAsOf="2026-10-31" />
       </AsOfProvider>
     </ModeProvider>,
   )

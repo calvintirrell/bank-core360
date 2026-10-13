@@ -1,5 +1,6 @@
 import { WhyItMatters } from './WhyItMatters'
 import { useEffect, useState } from 'react'
+import { useDebounced } from '../lib/useDebounced'
 import { formatCell, runSql, sqlString, type QueryResult } from '../lib/duckdb'
 import type { Lineage } from '../lib/lineage'
 import { LineageBadge } from './LineageBadge'
@@ -45,19 +46,20 @@ export function Customer360({ lineage }: { lineage: Lineage | null }) {
   const [accounts, setAccounts] = useState<QueryResult | null>(null)
   const [error, setError] = useState('')
 
-  const where = `${FILTERS[filter].where}${search.trim() ? ` AND full_name ILIKE ${sqlString(`%${search.trim()}%`)}` : ''}`
+  const typed = useDebounced(search.trim(), 250)
+  const where = `${FILTERS[filter].where}${typed ? ` AND full_name ILIKE ${sqlString(`%${typed}%`)}` : ''}`
 
   useEffect(() => {
     let cancelled = false
     ;(async () => {
       try {
-        const count = await runSql(`SELECT count(*) AS n FROM customer_360 WHERE ${where}`)
+        // One statement: the page plus the total over the same filter (window count).
         const r = await runSql(
-          `SELECT ${COLUMNS.join(', ')} FROM customer_360 WHERE ${where} ORDER BY customer_key LIMIT ${PAGE} OFFSET ${page * PAGE}`,
+          `SELECT ${COLUMNS.join(', ')}, count(*) OVER () AS _total FROM customer_360 WHERE ${where} ORDER BY customer_key LIMIT ${PAGE} OFFSET ${page * PAGE}`,
         )
         if (cancelled) return
-        setTotal(Number(count.rows[0].n))
-        setResult(r)
+        setTotal(r.rows.length ? Number(r.rows[0]._total) : 0)
+        setResult({ ...r, columns: r.columns.filter((c) => c.name !== '_total') })
         setError('')
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : String(e))

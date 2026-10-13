@@ -7,9 +7,8 @@ const cols = Object.keys(person).map((name) => ({ name, kind: typeof person[name
 vi.mock('../lib/duckdb', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../lib/duckdb')>()),
   runSql: vi.fn(async (sql: string) => {
-    if (/count\(\*\)/.test(sql)) return { columns: [{ name: 'n', kind: 'integer' as const }], rows: [{ n: 1 }], ms: 1 }
     if (/FROM account_360/.test(sql)) return { columns: [{ name: 'product_type', kind: 'text' as const }], rows: [{ product_type: 'checking' }], ms: 1 }
-    return { columns: cols, rows: [person], ms: 1 }
+    return { columns: [...cols, { name: '_total', kind: 'integer' as const }], rows: [{ ...person, _total: 1 }], ms: 1 }
   }),
 }))
 

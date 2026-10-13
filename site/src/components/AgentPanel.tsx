@@ -11,6 +11,7 @@ import { ResultTable } from './ResultTable'
 import { Card, Section } from './Section'
 import { Term } from './Term'
 import { WhyItMatters } from './WhyItMatters'
+import { normalizeQuestion } from '../lib/text'
 
 /** The own-key field is hidden by default; append ?byok to the URL to reveal it (or it shows
  *  automatically when a key is already stored in this tab's session). */
@@ -18,7 +19,7 @@ function byokRequested(): boolean {
   return new URLSearchParams(window.location.search).has('byok')
 }
 
-export function AgentPanel({ lineage }: { lineage: Lineage | null }) {
+export function AgentPanel({ lineage, asOf, latestAsOf }: { lineage: Lineage | null; asOf: string | null; latestAsOf: string | null }) {
   const bank = useBankMode()
   const { version } = useAsOf()
   const latest = version === 'latest'
@@ -51,9 +52,15 @@ export function AgentPanel({ lineage }: { lineage: Lineage | null }) {
     ready().then(() => setEngine('ready')).catch(() => setEngine('error'))
     fetchQuota().then(setQuota)
     loadReplay().then(setReplay).catch(() => setReplay(null))
-    loadAgentPrompt(versionDir(version)).then(setPrompt).catch(() => setPrompt(null))
     loadAgentTool().then(setTool).catch(() => setTool(null))
   }, [])
+  // The prompt follows the as-of (each version ships its own); a question in flight for the old
+  // as-of is cancelled; an answer already shown stays, tagged with the as-of it was answered for.
+  useEffect(() => {
+    inflight.current?.abort()
+    setPrompt(null)
+    loadAgentPrompt(versionDir(version)).then(setPrompt).catch(() => setPrompt(null))
+  }, [version])
 
   // Guided tour: show a saved answer with the evidence open, at no cost.
   const [forceWork, setForceWork] = useState(false)
@@ -77,19 +84,20 @@ export function AgentPanel({ lineage }: { lineage: Lineage | null }) {
   const engineReady = engine === 'ready'
   const replayActive = useReplay || !liveAvailable
 
-  const cached = useMemo(() => (latest ? replay?.questions.find((q) => q.question === question.trim()) ?? null : null), [replay, question, latest])
+  const findCached = (text: string) => (latest ? replay?.questions.find((q) => normalizeQuestion(q.question) === normalizeQuestion(text)) ?? null : null)
+  const cached = useMemo(() => findCached(question), [replay, question, latest]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function ask(q: string) {
     const text = q.trim()
     if (!text) return
     setError('')
-    const entry = latest ? replay?.questions.find((e) => e.question === text) ?? null : null
+    const entry = findCached(text)
     if (replayActive) {
       if (!entry) {
         setError('Cached answers exist only for the listed questions. Pick one, or wait for the daily limit to reset.')
         return
       }
-      setRun(replayRun(entry))
+      setRun({ ...replayRun(entry), asOf: latestAsOf ?? undefined })
       return
     }
     inflight.current?.abort()
@@ -99,14 +107,15 @@ export function AgentPanel({ lineage }: { lineage: Lineage | null }) {
     setRun(null)
     try {
       sessionStorage.setItem('bc360.apiKey', apiKey)
-      const result = await askLive(text, { apiKey, model, prompt: prompt!, tool: tool!, onUpdate: setRun, signal: controller.signal })
+      const askedAsOf = asOf ?? undefined
+      const result = await askLive(text, { apiKey, model, prompt: prompt!, tool: tool!, onUpdate: (r) => setRun({ ...r, asOf: askedAsOf }), signal: controller.signal })
       if (controller.signal.aborted) return
-      setRun(result)
+      setRun({ ...result, asOf: askedAsOf })
     } catch (e) {
       if (isAbortError(e) || controller.signal.aborted) return
       if (e instanceof DemoCapError) {
         setCapHit(true)
-        if (entry) setRun(replayRun(entry))
+        if (entry) setRun({ ...replayRun(entry), asOf: latestAsOf ?? undefined })
       } else {
         setError(e instanceof Error ? e.message : String(e))
       }
@@ -223,13 +232,15 @@ export function AgentPanel({ lineage }: { lineage: Lineage | null }) {
         {error && <pre className="mt-2 whitespace-pre-wrap text-sm text-red-700">{error}</pre>}
       </Card>
 
-      {run && <Transcript run={run} lineage={lineage} apiKey={apiKey} busy={busy} bank={bank} forceWork={forceWork} onAsk={(q) => { setForceWork(false); setQuestion(q); ask(q) }} />}
+      {run && <Transcript run={run} lineage={lineage} apiKey={apiKey} busy={busy} bank={bank} forceWork={forceWork} staleAsOf={run.asOf && asOf && run.asOf !== asOf ? run.asOf : null} onAsk={(q) => { setForceWork(false); setQuestion(q); ask(q) }} />}
       <WhyItMatters id="ask" />
     </Section>
   )
 }
 
-function Transcript({ run, lineage, apiKey, busy, bank, forceWork, onAsk }: { run: AgentRun; lineage: Lineage | null; apiKey: string; busy: boolean; bank: boolean; forceWork?: boolean; onAsk: (q: string) => void }) {
+const fmtAsOf = (iso: string) => new Date(iso + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+
+function Transcript({ run, lineage, apiKey, busy, bank, forceWork, staleAsOf, onAsk }: { run: AgentRun; lineage: Lineage | null; apiKey: string; busy: boolean; bank: boolean; forceWork?: boolean; staleAsOf: string | null; onAsk: (q: string) => void }) {
   const [showWork, setShowWork] = useState(!bank || !!forceWork)
   useEffect(() => setShowWork(!bank || !!forceWork), [bank, run.question, forceWork])
   const routeText = run.route === 'replay' ? 'cached answer (replay)' : routeLabel(apiKey)
@@ -240,6 +251,7 @@ function Transcript({ run, lineage, apiKey, busy, bank, forceWork, onAsk }: { ru
       <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
         <div className="text-xs uppercase tracking-wide text-slate-500">Question</div>
         <div className="text-sm font-medium">{run.question}</div>
+        {staleAsOf && <div className="mt-1 text-xs text-amber-800">Answered as of {fmtAsOf(staleAsOf)}. The page now shows a different date; ask again for the current numbers.</div>}
       </div>
 
       {busy && run.explanation === null && (

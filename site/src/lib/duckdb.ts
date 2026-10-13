@@ -130,19 +130,27 @@ function kindOf(f: Field): ColumnKind {
   }
 }
 
+/** One long-lived query connection (opening one per query cost a round trip to the worker each time). */
+let queryConn: Promise<duckdb.AsyncDuckDBConnection> | null = null
+
+async function connection(): Promise<duckdb.AsyncDuckDBConnection> {
+  if (!queryConn) {
+    queryConn = getDb().then((db) => db.connect())
+    queryConn.catch(() => {
+      queryConn = null
+    })
+  }
+  return queryConn
+}
+
 export async function runSql(sql: string): Promise<QueryResult> {
   await ready()
-  const db = await getDb()
-  const conn = await db.connect()
+  const conn = await connection()
   const t0 = performance.now()
-  try {
-    const table = await conn.query(sql)
-    const columns = table.schema.fields.map((f) => ({ name: f.name, kind: kindOf(f) }))
-    const rows = table.toArray().map((r) => r.toJSON() as Record<string, unknown>)
-    return { columns, rows, ms: Math.round(performance.now() - t0) }
-  } finally {
-    await conn.close()
-  }
+  const table = await conn.query(sql)
+  const columns = table.schema.fields.map((f) => ({ name: f.name, kind: kindOf(f) }))
+  const rows = table.toArray().map((r) => r.toJSON() as Record<string, unknown>)
+  return { columns, rows, ms: Math.round(performance.now() - t0) }
 }
 
 /** Escapes a value for inclusion in a SQL string literal. */

@@ -20,6 +20,8 @@ export type AgentRun = {
   stopReason: string | null
   pending: boolean
   followUps: string[]
+  /** The as-of date the answer was computed for (set by the panel), so a later switch can say so. */
+  asOf?: string
 }
 
 /** Converts a DuckDB result into the compact shape the model receives (same as pipeline/replay.py). */
