@@ -170,8 +170,8 @@
   },
   "is_latest": true,
   "match": {
-    "auto_merged": 270,
     "confirmed_by_reviewer": 5,
+    "merged": 270,
     "precision": 1.0,
     "recall": 0.9,
     "rejected_by_reviewer": 2,

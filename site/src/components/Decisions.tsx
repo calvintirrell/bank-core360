@@ -47,7 +47,7 @@ export function Decisions({ report }: { report: MatchReport | null }) {
       }
     >
       <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <Stat label="people were in both banks and were merged automatically" value={report.auto_merged.toLocaleString()} hint="exact matches, or close matches scored above the line" />
+        <Stat label="people were in both banks and were merged" value={report.merged.toLocaleString()} hint={`exact matches, close matches scored above the line, and ${report.tier_3_confirmed} confirmed by a reviewer`} />
         <Stat label="possible duplicates were held for a person to check" value={report.review_queue.toLocaleString()} hint="never merged on a guess" />
         <Stat label="wrong merges, checked against the answer key" value={String(report.false_positives)} hint={`and ${report.traps_merged} of the ${report.by_kind.trap ? Object.values(report.by_kind.trap).reduce((a, b) => a + b, 0) : 5} same-name traps were merged`} />
       </div>

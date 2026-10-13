@@ -58,7 +58,7 @@ export function Hero({ manifest, report, changes, latest }: { manifest: Manifest
           <>
             <Stat label="customer records arrived" value={n(sourceRecords)} hint="from the two systems" />
             <Stat label="real people, once duplicates were resolved" value={n(customers)} hint="one row per person" />
-            <Stat label="people were in both systems" value={n(report?.auto_merged)} hint="they would have been counted twice" />
+            <Stat label="people were in both systems" value={n(report?.merged)} hint="they would have been counted twice" />
             <Stat label="accounts" value={n(manifest?.export.account_360.rows)} hint="checking, savings, mortgages, CDs" />
             <Stat label="transactions" value={n(manifest?.export.transactions.rows)} hint="the last twelve months" />
             <Stat label="as of" value={fmtDate(manifest?.as_of)} hint="every 'quiet' or 'recent' is measured from this date" />
@@ -67,7 +67,7 @@ export function Hero({ manifest, report, changes, latest }: { manifest: Manifest
           <>
             <Stat label="Source customer records" value={n(sourceRecords)} hint="across two cores" />
             <Stat label="Resolved customers" value={n(customers)} hint="one row per person" />
-            <Stat label="Cross-core merges" value={n(report?.auto_merged)} hint={report ? `precision ${(report.precision * 100).toFixed(0)}%` : ''} />
+            <Stat label="Cross-core merges" value={n(report?.merged)} hint={report ? `precision ${(report.precision * 100).toFixed(0)}%` : ''} />
             <Stat label="Accounts" value={n(manifest?.export.account_360.rows)} />
             <Stat label="Transactions" value={n(manifest?.export.transactions.rows)} />
             <Stat label="As of" value={manifest?.as_of ?? '…'} hint="dormancy and recency rules" />

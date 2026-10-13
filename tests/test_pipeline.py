@@ -62,7 +62,7 @@ def test_row_counts(con, manifest, manifest_v0):
         n = con.sql(f"SELECT count(*) FROM {view}").fetchone()[0]
         assert n == m["export"]["customer_360"]["rows"]
         # unique people + true pairs that stay unmerged (one extra row each)
-        unmatched_true_pairs = m["match"]["truth_pairs"] - m["match"]["auto_merged"]
+        unmatched_true_pairs = m["match"]["truth_pairs"] - m["match"]["merged"]
         assert n == m["generator"]["unique_people"] + unmatched_true_pairs
 
 
@@ -115,7 +115,7 @@ def test_reviewer_decisions_apply_only_from_batch_two(match_report, match_report
     assert match_report_v0["confirmed_by_reviewer"] == 0 and match_report_v0["tier_3_confirmed"] == 0
     assert match_report["confirmed_by_reviewer"] == 5 and match_report["tier_3_confirmed"] == 5
     assert match_report["rejected_by_reviewer"] == 2
-    assert match_report["auto_merged"] == match_report_v0["auto_merged"] + 5
+    assert match_report["merged"] == match_report_v0["merged"] + 5
     assert match_report["by_kind"]["trap_review"]["unmatched"] == 2
     assert match_report_v0["by_kind"]["trap_review"]["review"] == 2
     assert changes["customers_merged_by_reviewer"] == 5 and changes["pairs_rejected_by_reviewer"] == 2
@@ -157,7 +157,7 @@ def test_merged_customers_have_both_ids(con, manifest):
     ).fetchone()[0]
     assert bad == 0
     assert (
-        con.sql("SELECT count(*) FROM customer_360 WHERE source_systems='core_a+core_b'").fetchone()[0] == manifest["match"]["auto_merged"]
+        con.sql("SELECT count(*) FROM customer_360 WHERE source_systems='core_a+core_b'").fetchone()[0] == manifest["match"]["merged"]
     )
 
 

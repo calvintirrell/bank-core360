@@ -153,7 +153,7 @@ def main() -> int:
                 k: m[k]
                 for k in (
                     "truth_pairs",
-                    "auto_merged",
+                    "merged",
                     "tier_1_deterministic",
                     "tier_2_fuzzy",
                     "tier_3_confirmed",

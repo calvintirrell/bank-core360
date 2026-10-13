@@ -41,9 +41,10 @@ export type Manifest = {
 }
 
 export type MatchReport = {
-  auto_merged: number
+  merged: number
   tier_1_deterministic: number
   tier_2_fuzzy: number
+  tier_3_confirmed: number
   review_queue: number
   candidates_scored: number
   thresholds: { auto_merge: number; review_floor: number }

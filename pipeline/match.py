@@ -299,7 +299,7 @@ def score_against_truth(merged: dict[str, Candidate], review: list[Candidate]) -
     for c in merged.values():
         tiers[c.tier or 0] += 1
     report: dict = {
-        "auto_merged": len(merged_pairs),
+        "merged": len(merged_pairs),
         "tier_1_deterministic": tiers[1],
         "tier_2_fuzzy": tiers[2],
         "tier_3_confirmed": tiers[3],

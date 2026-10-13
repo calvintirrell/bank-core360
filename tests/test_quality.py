@@ -119,4 +119,4 @@ def test_matcher_reports_the_key_space(latest):
     manifest = json.loads((EXPORT / "manifest.json").read_text())
     xref = read_table(SILVER, "customer_xref")
     assert report["keys"]["collisions"] == 0
-    assert report["keys"]["issued"] == manifest["export"]["customer_360"]["rows"] == xref.height - report["auto_merged"]
+    assert report["keys"]["issued"] == manifest["export"]["customer_360"]["rows"] == xref.height - report["merged"]

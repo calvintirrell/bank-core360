@@ -136,7 +136,7 @@ def run() -> list[dict]:
     check(
         "Q-06",
         "The matching made no wrong merges",
-        f"Checked against the answer key: {match['auto_merged']} merges, {match['false_positives']} wrong, {match['traps_merged']} of the same-name traps fooled it.",
+        f"Checked against the answer key: {match['merged']} merges, {match['false_positives']} wrong, {match['traps_merged']} of the same-name traps fooled it.",
         None,
         {"precision": match["precision"], "false_positives": match["false_positives"], "traps_merged": match["traps_merged"]},
         "precision = 1.0 and 0 traps merged",
